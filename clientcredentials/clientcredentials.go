@@ -44,8 +44,10 @@ func (mc *memoryCache) Put(t Token) {
 	mc.t = t
 }
 
+var expired = time.Time{}
+
 func (mc *memoryCache) Expire() {
-	mc.t.Deadline = expired
+	mc.t.Deadline = &expired
 }
 
 // DefaultTokenCache provides default implementation for token cache.
@@ -59,16 +61,17 @@ type Client struct {
 // Token holds a token.
 type Token struct {
 	Value    string
-	Deadline time.Time // zero deadline is always valid
+	Deadline *time.Time // nil deadline is always valid
 }
 
-// IsValid checks whether token is valid. Zero deadline is always valid.
+// IsValid checks whether token is valid.
 func (t Token) IsValid(toleration time.Duration) bool {
 	log.Printf("token toleration: %v", toleration)
-	return t.Deadline.IsZero() || t.Deadline.After(time.Now().Add(toleration))
+	if t.Deadline == nil {
+		return true
+	}
+	return t.Deadline.After(time.Now().Add(toleration))
 }
-
-var expired = time.Time{}.Add(time.Second)
 
 // New creates a client.
 func New(options Options) *Client {
@@ -185,14 +188,16 @@ func (c *Client) fetchToken() (string, error) {
 		switch expireVal := expire.(type) {
 		case float64:
 			log.Printf("found expires_in field with %f seconds", expireVal)
-			newToken.Deadline = time.Now().Add(time.Second * time.Duration(expireVal))
+			deadline := time.Now().Add(time.Second * time.Duration(expireVal))
+			newToken.Deadline = &deadline
 		case string:
 			log.Printf("found expires_in field with %s seconds", expireVal)
 			exp, errConv := strconv.Atoi(expireVal)
 			if errConv != nil {
 				return "", fmt.Errorf("error converting expires_in field from string='%s' to int: %v", expireVal, errConv)
 			}
-			newToken.Deadline = time.Now().Add(time.Second * time.Duration(exp))
+			deadline := time.Now().Add(time.Second * time.Duration(exp))
+			newToken.Deadline = &deadline
 		default:
 			return "", fmt.Errorf("unexpected type %T for expires_in field in token response", expire)
 		}
