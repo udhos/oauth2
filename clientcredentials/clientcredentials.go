@@ -68,21 +68,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	resp, errResp := c.send(req, accessToken)
 
 	if resp.StatusCode == 401 {
-		//
-		// token seemed valid but we got a possible token error,
-		// then we will retry once.
-		//
-
-		defer resp.Body.Close()
-
-		// force fresh new token
-		tokenResp, tokenErr := c.fetchToken()
-		if tokenErr != nil {
-			return nil, tokenErr
-		}
-
-		// retry with new token
-		return c.send(req, tokenResp)
+		c.cachedToken.deadline = expired
 	}
 
 	return resp, errResp
