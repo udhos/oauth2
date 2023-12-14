@@ -14,6 +14,13 @@ import (
 	"time"
 )
 
+// TokenCache defines a cache interface for storing tokens.
+type TokenCache interface {
+	Get() Token
+	Put(t Token)
+	Expire()
+}
+
 // Options define client options.
 type Options struct {
 	TokenURL                string
@@ -22,23 +29,43 @@ type Options struct {
 	Scope                   string
 	HTTPClient              *http.Client
 	ExpireTolerationSeconds int // 0 defaults to 10 seconds. Set to -1 to no toleration.
+	Cache                   TokenCache
 }
+
+type memoryCache struct {
+	t Token
+}
+
+func (mc *memoryCache) Get() Token {
+	return mc.t
+}
+
+func (mc *memoryCache) Put(t Token) {
+	mc.t = t
+}
+
+func (mc *memoryCache) Expire() {
+	mc.t.Deadline = expired
+}
+
+// DefaultTokenCache provides default implementation for token cache.
+var DefaultTokenCache = &memoryCache{}
 
 // Client is context for invokations with client-credentials flow.
 type Client struct {
-	options     Options
-	cachedToken token
+	options Options
 }
 
-type token struct {
-	value    string
-	deadline time.Time // zero deadline is always valid
+// Token holds a token.
+type Token struct {
+	Value    string
+	Deadline time.Time // zero deadline is always valid
 }
 
-// Zero deadline is always valid.
-func (t token) isValid(toleration time.Duration) bool {
+// IsValid checks whether token is valid. Zero deadline is always valid.
+func (t Token) IsValid(toleration time.Duration) bool {
 	log.Printf("token toleration: %v", toleration)
-	return t.deadline.IsZero() || t.deadline.After(time.Now().Add(toleration))
+	return t.Deadline.IsZero() || t.Deadline.After(time.Now().Add(toleration))
 }
 
 var expired = time.Time{}.Add(time.Second)
@@ -51,9 +78,12 @@ func New(options Options) *Client {
 	case -1:
 		options.ExpireTolerationSeconds = 0
 	}
+	if options.Cache == nil {
+		options.Cache = DefaultTokenCache
+	}
+	options.Cache.Expire()
 	return &Client{
-		options:     options,
-		cachedToken: token{deadline: expired},
+		options: options,
 	}
 }
 
@@ -68,7 +98,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	resp, errResp := c.send(req, accessToken)
 
 	if resp.StatusCode == 401 {
-		c.cachedToken.deadline = expired
+		c.options.Cache.Expire()
 	}
 
 	return resp, errResp
@@ -80,9 +110,11 @@ func (c *Client) send(req *http.Request, accessToken string) (*http.Response, er
 }
 
 func (c *Client) getToken() (string, error) {
-	if c.cachedToken.isValid(time.Duration(c.options.ExpireTolerationSeconds) * time.Second) {
+	t := c.options.Cache.Get()
+	toleration := time.Duration(c.options.ExpireTolerationSeconds) * time.Second
+	if t.IsValid(toleration) {
 		log.Printf("found valid cached token")
-		return c.cachedToken.value, nil
+		return t.Value, nil
 	}
 	log.Printf("NO valid cached token")
 	return c.fetchToken()
@@ -144,8 +176,8 @@ func (c *Client) fetchToken() (string, error) {
 		return "", fmt.Errorf("non-string value for access_token field in token response")
 	}
 
-	newToken := token{
-		value: tokenStr,
+	newToken := Token{
+		Value: tokenStr,
 	}
 
 	expire, foundExpire := data["expires_in"]
@@ -153,21 +185,21 @@ func (c *Client) fetchToken() (string, error) {
 		switch expireVal := expire.(type) {
 		case float64:
 			log.Printf("found expires_in field with %f seconds", expireVal)
-			newToken.deadline = time.Now().Add(time.Second * time.Duration(expireVal))
+			newToken.Deadline = time.Now().Add(time.Second * time.Duration(expireVal))
 		case string:
 			log.Printf("found expires_in field with %s seconds", expireVal)
 			exp, errConv := strconv.Atoi(expireVal)
 			if errConv != nil {
 				return "", fmt.Errorf("error converting expires_in field from string='%s' to int: %v", expireVal, errConv)
 			}
-			newToken.deadline = time.Now().Add(time.Second * time.Duration(exp))
+			newToken.Deadline = time.Now().Add(time.Second * time.Duration(exp))
 		default:
 			return "", fmt.Errorf("unexpected type %T for expires_in field in token response", expire)
 		}
 	}
 
 	log.Printf("saving new token")
-	c.cachedToken = newToken
+	c.options.Cache.Put(newToken)
 
 	return tokenStr, nil
 }
