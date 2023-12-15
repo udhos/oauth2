@@ -16,24 +16,23 @@ import (
 
 // Options define client options.
 type Options struct {
-	TokenURL            string
-	ClientID            string
-	ClientSecret        string
-	Scope               string
-	HTTPClient          *http.Client
-	SoftExpireInSeconds int // 0 defaults to 10 seconds. Set to -1 to no soft expire.
-	Cache               TokenCache
+	TokenURL     string
+	ClientID     string
+	ClientSecret string
+	Scope        string
+	HTTPClient   *http.Client
+
+	// 0 defaults to 10 seconds. Set to -1 to no soft expire.
+	//
+	// Example: consider expire_in = 30 seconds and soft expire = 10 seconds.
+	// The token will hard expire after 30 seconds, but we will consider it
+	// expired after (30-10) = 20 seconds, in order to attempt renewal before
+	// hard expiration.
+	//
+	SoftExpireInSeconds int
+
+	Cache TokenCache
 }
-
-/*
-	Soft Expire:
-
-	field expire_in = 30 seconds
-	soft expire     = 10 seconds
-
-	The token will hard expire after 30 seconds.
-	We will consider it expired after (30-10) = 20 seconds, in order to attempt to refresh it before hard expiration.
-*/
 
 // Client is context for invokations with client-credentials flow.
 type Client struct {
