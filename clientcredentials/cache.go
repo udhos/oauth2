@@ -1,7 +1,5 @@
 package clientcredentials
 
-import "time"
-
 // TokenCache defines a cache interface for storing tokens.
 type TokenCache interface {
 	Get() Token
@@ -21,10 +19,8 @@ func (mc *memoryCache) Put(t Token) {
 	mc.t = t
 }
 
-var expired = time.Time{}
-
 func (mc *memoryCache) Expire() {
-	mc.t.Deadline = &expired
+	mc.t.Expire()
 }
 
 // DefaultTokenCache provides default implementation for token cache.

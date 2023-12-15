@@ -9,20 +9,22 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/udhos/oauth2/clientcredentials"
 )
 
 type application struct {
-	tokenURL                string
-	clientID                string
-	clientSecret            string
-	scope                   string
-	targetURL               string
-	targetMethod            string
-	targetBody              string
-	count                   int
-	expireTolerationSeconds int
+	tokenURL          string
+	clientID          string
+	clientSecret      string
+	scope             string
+	targetURL         string
+	targetMethod      string
+	targetBody        string
+	count             int
+	softExpireSeconds int
+	interval          time.Duration
 }
 
 func main() {
@@ -37,17 +39,18 @@ func main() {
 	flag.StringVar(&app.targetMethod, "targetMethod", "GET", "target method")
 	flag.StringVar(&app.targetBody, "targetBody", "targetBody", "target body")
 	flag.IntVar(&app.count, "count", 2, "how many requests to send")
-	flag.IntVar(&app.expireTolerationSeconds, "expireTolerationSeconds", 10, "token expire toleration in seconds")
+	flag.IntVar(&app.softExpireSeconds, "softExpireSeconds", 10, "token soft expire in seconds")
+	flag.DurationVar(&app.interval, "interval", 2*time.Second, "interval bewteen sends")
 
 	flag.Parse()
 
 	options := clientcredentials.Options{
-		TokenURL:                app.tokenURL,
-		ClientID:                app.clientID,
-		ClientSecret:            app.clientSecret,
-		Scope:                   app.scope,
-		HTTPClient:              http.DefaultClient,
-		ExpireTolerationSeconds: app.expireTolerationSeconds,
+		TokenURL:            app.tokenURL,
+		ClientID:            app.clientID,
+		ClientSecret:        app.clientSecret,
+		Scope:               app.scope,
+		HTTPClient:          http.DefaultClient,
+		SoftExpireInSeconds: app.softExpireSeconds,
 	}
 
 	client := clientcredentials.New(options)
@@ -76,5 +79,10 @@ func main() {
 
 		log.Printf("%s: body:", label)
 		fmt.Println(string(body))
+
+		if i < app.count && app.interval != 0 {
+			log.Printf("%s: sleeping for interval=%v", label, app.interval)
+			time.Sleep(app.interval)
+		}
 	}
 }

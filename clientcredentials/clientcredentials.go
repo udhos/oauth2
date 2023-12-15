@@ -16,14 +16,24 @@ import (
 
 // Options define client options.
 type Options struct {
-	TokenURL                string
-	ClientID                string
-	ClientSecret            string
-	Scope                   string
-	HTTPClient              *http.Client
-	ExpireTolerationSeconds int // 0 defaults to 10 seconds. Set to -1 to no toleration.
-	Cache                   TokenCache
+	TokenURL            string
+	ClientID            string
+	ClientSecret        string
+	Scope               string
+	HTTPClient          *http.Client
+	SoftExpireInSeconds int // 0 defaults to 10 seconds. Set to -1 to no soft expire.
+	Cache               TokenCache
 }
+
+/*
+	Soft Expire:
+
+	field expire_in = 30 seconds
+	soft expire     = 10 seconds
+
+	The token will hard expire after 30 seconds.
+	We will consider it expired after (30-10) = 20 seconds, in order to attempt to refresh it before hard expiration.
+*/
 
 // Client is context for invokations with client-credentials flow.
 type Client struct {
@@ -32,11 +42,11 @@ type Client struct {
 
 // New creates a client.
 func New(options Options) *Client {
-	switch options.ExpireTolerationSeconds {
+	switch options.SoftExpireInSeconds {
 	case 0:
-		options.ExpireTolerationSeconds = 10
+		options.SoftExpireInSeconds = 10
 	case -1:
-		options.ExpireTolerationSeconds = 0
+		options.SoftExpireInSeconds = 0
 	}
 	if options.Cache == nil {
 		options.Cache = DefaultTokenCache
@@ -71,8 +81,8 @@ func (c *Client) send(req *http.Request, accessToken string) (*http.Response, er
 
 func (c *Client) getToken() (string, error) {
 	t := c.options.Cache.Get()
-	toleration := time.Duration(c.options.ExpireTolerationSeconds) * time.Second
-	if t.IsValid(toleration) {
+	softExpire := time.Duration(c.options.SoftExpireInSeconds) * time.Second
+	if t.IsValid(softExpire) {
 		log.Printf("found valid cached token")
 		return t.Value, nil
 	}
@@ -145,16 +155,14 @@ func (c *Client) fetchToken() (string, error) {
 		switch expireVal := expire.(type) {
 		case float64:
 			log.Printf("found expires_in field with %f seconds", expireVal)
-			deadline := time.Now().Add(time.Second * time.Duration(expireVal))
-			newToken.Deadline = &deadline
+			newToken.SetExpiration(time.Now().Add(time.Second * time.Duration(expireVal)))
 		case string:
 			log.Printf("found expires_in field with %s seconds", expireVal)
 			exp, errConv := strconv.Atoi(expireVal)
 			if errConv != nil {
 				return "", fmt.Errorf("error converting expires_in field from string='%s' to int: %v", expireVal, errConv)
 			}
-			deadline := time.Now().Add(time.Second * time.Duration(exp))
-			newToken.Deadline = &deadline
+			newToken.SetExpiration(time.Now().Add(time.Second * time.Duration(exp)))
 		default:
 			return "", fmt.Errorf("unexpected type %T for expires_in field in token response", expire)
 		}
