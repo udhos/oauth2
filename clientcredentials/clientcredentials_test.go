@@ -65,17 +65,19 @@ func TestClientCredentials(t *testing.T) {
 	clientID := "clientID"
 	clientSecret := "clientSecret"
 	token := "abc"
+	expireIn := 0
+	softExpire := 0
 
 	tokenServerStat := serverStat{}
 	serverStat := serverStat{}
 
-	ts := newTokenServer(&tokenServerStat, clientID, clientSecret, token)
+	ts := newTokenServer(&tokenServerStat, clientID, clientSecret, token, expireIn)
 	defer ts.Close()
 
 	srv := newServer(&serverStat, token)
 	defer srv.Close()
 
-	client := newClient(ts.URL, clientID, clientSecret)
+	client := newClient(ts.URL, clientID, clientSecret, softExpire)
 
 	// send 1
 
@@ -102,6 +104,71 @@ func TestClientCredentials(t *testing.T) {
 		t.Errorf("unexpected token server access count: %d", tokenServerStat.count)
 	}
 	if serverStat.count != 2 {
+		t.Errorf("unexpected server access count: %d", serverStat.count)
+	}
+}
+
+func TestClientCredentialsExpiration(t *testing.T) {
+
+	clientID := "clientID"
+	clientSecret := "clientSecret"
+	token := "abc"
+	expireIn := 1
+	softExpire := -1 // disable soft expire
+
+	tokenServerStat := serverStat{}
+	serverStat := serverStat{}
+
+	ts := newTokenServer(&tokenServerStat, clientID, clientSecret, token, expireIn)
+	defer ts.Close()
+
+	srv := newServer(&serverStat, token)
+	defer srv.Close()
+
+	client := newClient(ts.URL, clientID, clientSecret, softExpire)
+
+	// send 1
+
+	{
+		_, errSend := send(client, srv.URL)
+		if errSend != nil {
+			t.Errorf("send: %v", errSend)
+		}
+		if tokenServerStat.count != 1 {
+			t.Errorf("unexpected token server access count: %d", tokenServerStat.count)
+		}
+		if serverStat.count != 1 {
+			t.Errorf("unexpected server access count: %d", serverStat.count)
+		}
+	}
+
+	// send 2
+
+	{
+		_, errSend2 := send(client, srv.URL)
+		if errSend2 != nil {
+			t.Errorf("send: %v", errSend2)
+		}
+		if tokenServerStat.count != 1 {
+			t.Errorf("unexpected token server access count: %d", tokenServerStat.count)
+		}
+		if serverStat.count != 2 {
+			t.Errorf("unexpected server access count: %d", serverStat.count)
+		}
+	}
+
+	time.Sleep(time.Second * time.Duration(expireIn+1))
+
+	// send 3
+
+	_, errSend3 := send(client, srv.URL)
+	if errSend3 != nil {
+		t.Errorf("send: %v", errSend3)
+	}
+	if tokenServerStat.count != 2 {
+		t.Errorf("unexpected token server access count: %d", tokenServerStat.count)
+	}
+	if serverStat.count != 3 {
 		t.Errorf("unexpected server access count: %d", serverStat.count)
 	}
 }
@@ -169,7 +236,7 @@ type serverStat struct {
 	count int
 }
 
-func newTokenServer(serverInfo *serverStat, clientID, clientSecret, token string) *httptest.Server {
+func newTokenServer(serverInfo *serverStat, clientID, clientSecret, token string, expireIn int) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		serverInfo.count++
@@ -184,18 +251,25 @@ func newTokenServer(serverInfo *serverStat, clientID, clientSecret, token string
 			return
 		}
 
-		t := fmt.Sprintf(`{"access_token":"%s"}`, token)
+		var t string
+
+		if expireIn > 0 {
+			t = fmt.Sprintf(`{"access_token":"%s","expires_in":%d}`, token, expireIn)
+		} else {
+			t = fmt.Sprintf(`{"access_token":"%s"}`, token)
+		}
 
 		httpJSON(w, t, http.StatusOK)
 	}))
 }
 
-func newClient(tokenURL, clientID, clientSecret string) *Client {
+func newClient(tokenURL, clientID, clientSecret string, softExpire int) *Client {
 	options := Options{
-		TokenURL:     tokenURL,
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		HTTPClient:   http.DefaultClient,
+		TokenURL:            tokenURL,
+		ClientID:            clientID,
+		ClientSecret:        clientSecret,
+		HTTPClient:          http.DefaultClient,
+		SoftExpireInSeconds: softExpire,
 	}
 
 	client := New(options)
