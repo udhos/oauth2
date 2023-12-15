@@ -15,7 +15,7 @@ type Token struct {
 // IsValid checks whether token is valid.
 func (t *Token) IsValid(softExpire time.Duration) bool {
 	now := time.Now()
-	remain := now.Sub(t.Deadline)
+	remain := t.Deadline.Sub(now)
 	valid := !t.Expirable || t.Deadline.After(now.Add(softExpire))
 	log.Printf("token softExpire=%v remain=%v expirable=%v valid=%v",
 		softExpire, remain, t.Expirable, valid)

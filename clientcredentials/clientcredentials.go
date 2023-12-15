@@ -129,47 +129,69 @@ func (c *Client) fetchToken() (string, error) {
 		return "", fmt.Errorf("status:%d body:%v", resp.StatusCode, string(body))
 	}
 
+	info, errParse := parseToken(body)
+	if errParse != nil {
+		return "", fmt.Errorf("parse token: %v", errParse)
+	}
+
+	newToken := Token{
+		Value: info.accessToken,
+	}
+
+	if info.expireIn != 0 {
+		newToken.SetExpiration(time.Now().Add(info.expireIn))
+	}
+
+	log.Printf("saving new token")
+	c.options.Cache.Put(newToken)
+
+	return newToken.Value, nil
+}
+
+type tokenInfo struct {
+	accessToken string
+	expireIn    time.Duration
+}
+
+func parseToken(buf []byte) (tokenInfo, error) {
+	var info tokenInfo
+
 	var data map[string]interface{}
 
-	errJSON := json.Unmarshal(body, &data)
+	errJSON := json.Unmarshal(buf, &data)
 	if errJSON != nil {
-		return "", errJSON
+		return info, errJSON
 	}
 
 	accessToken, foundToken := data["access_token"]
 	if !foundToken {
-		return "", fmt.Errorf("missing access_token field in token response")
+		return info, fmt.Errorf("missing access_token field in token response")
 	}
 
 	tokenStr, isStr := accessToken.(string)
 	if !isStr {
-		return "", fmt.Errorf("non-string value for access_token field in token response")
+		return info, fmt.Errorf("non-string value for access_token field in token response")
 	}
 
-	newToken := Token{
-		Value: tokenStr,
-	}
+	info.accessToken = tokenStr
 
 	expire, foundExpire := data["expires_in"]
 	if foundExpire {
 		switch expireVal := expire.(type) {
 		case float64:
 			log.Printf("found expires_in field with %f seconds", expireVal)
-			newToken.SetExpiration(time.Now().Add(time.Second * time.Duration(expireVal)))
+			info.expireIn = time.Second * time.Duration(expireVal)
 		case string:
 			log.Printf("found expires_in field with %s seconds", expireVal)
 			exp, errConv := strconv.Atoi(expireVal)
 			if errConv != nil {
-				return "", fmt.Errorf("error converting expires_in field from string='%s' to int: %v", expireVal, errConv)
+				return info, fmt.Errorf("error converting expires_in field from string='%s' to int: %v", expireVal, errConv)
 			}
-			newToken.SetExpiration(time.Now().Add(time.Second * time.Duration(exp)))
+			info.expireIn = time.Second * time.Duration(exp)
 		default:
-			return "", fmt.Errorf("unexpected type %T for expires_in field in token response", expire)
+			return info, fmt.Errorf("unexpected type %T for expires_in field in token response", expire)
 		}
 	}
 
-	log.Printf("saving new token")
-	c.options.Cache.Put(newToken)
-
-	return tokenStr, nil
+	return info, nil
 }

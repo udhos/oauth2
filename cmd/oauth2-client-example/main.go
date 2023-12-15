@@ -56,33 +56,36 @@ func main() {
 	client := clientcredentials.New(options)
 
 	for i := 1; i <= app.count; i++ {
+		send(&app, client, i)
+	}
+}
 
-		label := fmt.Sprintf("request %d/%d", i, app.count)
+func send(app *application, client *clientcredentials.Client, i int) {
+	label := fmt.Sprintf("request %d/%d", i, app.count)
 
-		req, errReq := http.NewRequestWithContext(context.TODO(), app.targetMethod, app.targetURL, bytes.NewBufferString(app.targetBody))
-		if errReq != nil {
-			log.Fatalf("%s: request: %v", label, errReq)
-		}
+	req, errReq := http.NewRequestWithContext(context.TODO(), app.targetMethod, app.targetURL, bytes.NewBufferString(app.targetBody))
+	if errReq != nil {
+		log.Fatalf("%s: request: %v", label, errReq)
+	}
 
-		resp, errDo := client.Do(req)
-		if errDo != nil {
-			log.Fatalf("%s: do: %v", label, errDo)
-		}
-		defer resp.Body.Close()
+	resp, errDo := client.Do(req)
+	if errDo != nil {
+		log.Fatalf("%s: do: %v", label, errDo)
+	}
+	defer resp.Body.Close()
 
-		log.Printf("%s: status: %d", label, resp.StatusCode)
+	log.Printf("%s: status: %d", label, resp.StatusCode)
 
-		body, errBody := io.ReadAll(resp.Body)
-		if errBody != nil {
-			log.Fatalf("%s: body: %v", label, errBody)
-		}
+	body, errBody := io.ReadAll(resp.Body)
+	if errBody != nil {
+		log.Fatalf("%s: body: %v", label, errBody)
+	}
 
-		log.Printf("%s: body:", label)
-		fmt.Println(string(body))
+	log.Printf("%s: body:", label)
+	fmt.Println(string(body))
 
-		if i < app.count && app.interval != 0 {
-			log.Printf("%s: sleeping for interval=%v", label, app.interval)
-			time.Sleep(app.interval)
-		}
+	if i < app.count && app.interval != 0 {
+		log.Printf("%s: sleeping for interval=%v", label, app.interval)
+		time.Sleep(app.interval)
 	}
 }
