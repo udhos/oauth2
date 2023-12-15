@@ -137,8 +137,8 @@ func (c *Client) fetchToken() (string, error) {
 		Value: info.accessToken,
 	}
 
-	if info.expireIn != 0 {
-		newToken.SetExpiration(time.Now().Add(info.expireIn))
+	if info.expiresIn != 0 {
+		newToken.SetExpiration(time.Now().Add(info.expiresIn))
 	}
 
 	log.Printf("saving new token")
@@ -149,7 +149,7 @@ func (c *Client) fetchToken() (string, error) {
 
 type tokenInfo struct {
 	accessToken string
-	expireIn    time.Duration
+	expiresIn   time.Duration
 }
 
 func parseToken(buf []byte) (tokenInfo, error) {
@@ -179,14 +179,14 @@ func parseToken(buf []byte) (tokenInfo, error) {
 		switch expireVal := expire.(type) {
 		case float64:
 			log.Printf("found expires_in field with %f seconds", expireVal)
-			info.expireIn = time.Second * time.Duration(expireVal)
+			info.expiresIn = time.Second * time.Duration(expireVal)
 		case string:
 			log.Printf("found expires_in field with %s seconds", expireVal)
 			exp, errConv := strconv.Atoi(expireVal)
 			if errConv != nil {
 				return info, fmt.Errorf("error converting expires_in field from string='%s' to int: %v", expireVal, errConv)
 			}
-			info.expireIn = time.Second * time.Duration(exp)
+			info.expiresIn = time.Second * time.Duration(exp)
 		default:
 			return info, fmt.Errorf("unexpected type %T for expires_in field in token response", expire)
 		}
