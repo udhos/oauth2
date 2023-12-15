@@ -22,8 +22,11 @@ type parseTokenTestCase struct {
 
 var parseTokenTestTable = []parseTokenTestCase{
 	{"empty", "", expectFailure, "", 0},
+	{"no fields", `{}`, expectFailure, "", 0},
+	{"missing access_token", `{"other":"field"}`, expectFailure, "", 0},
 	{"simple", `{"access_token":"abc"}`, expectSucess, "abc", 0},
-	{"expire numeric", `{"access_token":"abc","expires_in":300}`, expectSucess, "abc", 300 * time.Second},
+	{"expire integer", `{"access_token":"abc","expires_in":300}`, expectSucess, "abc", 300 * time.Second},
+	{"expire float", `{"access_token":"abc","expires_in":300.0}`, expectSucess, "abc", 300 * time.Second},
 	{"expire string", `{"access_token":"abc","expires_in":"300"}`, expectSucess, "abc", 300 * time.Second},
 }
 
