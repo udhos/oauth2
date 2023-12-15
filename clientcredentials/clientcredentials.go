@@ -32,6 +32,10 @@ type Options struct {
 	SoftExpireInSeconds int
 
 	Cache TokenCache
+
+	// Time source used to check token expiration.
+	// If unspecified, defaults to time.Time().
+	TimeSource func() time.Time
 }
 
 // Client is context for invokations with client-credentials flow.
@@ -49,6 +53,9 @@ func New(options Options) *Client {
 	}
 	if options.Cache == nil {
 		options.Cache = DefaultTokenCache
+	}
+	if options.TimeSource == nil {
+		options.TimeSource = time.Now
 	}
 	options.Cache.Expire()
 	return &Client{
@@ -81,7 +88,8 @@ func (c *Client) send(req *http.Request, accessToken string) (*http.Response, er
 func (c *Client) getToken() (string, error) {
 	t := c.options.Cache.Get()
 	softExpire := time.Duration(c.options.SoftExpireInSeconds) * time.Second
-	if t.IsValid(softExpire) {
+	now := c.options.TimeSource()
+	if t.IsValid(now, softExpire) {
 		log.Printf("found valid cached token")
 		return t.Value, nil
 	}

@@ -67,6 +67,7 @@ func TestClientCredentials(t *testing.T) {
 	token := "abc"
 	expireIn := 0
 	softExpire := 0
+	timeSource := (func() time.Time)(nil)
 
 	tokenServerStat := serverStat{}
 	serverStat := serverStat{}
@@ -77,7 +78,7 @@ func TestClientCredentials(t *testing.T) {
 	srv := newServer(&serverStat, token)
 	defer srv.Close()
 
-	client := newClient(ts.URL, clientID, clientSecret, softExpire)
+	client := newClient(ts.URL, clientID, clientSecret, softExpire, timeSource)
 
 	// send 1
 
@@ -125,7 +126,12 @@ func TestClientCredentialsExpiration(t *testing.T) {
 	srv := newServer(&serverStat, token)
 	defer srv.Close()
 
-	client := newClient(ts.URL, clientID, clientSecret, softExpire)
+	clock := time.Now()
+	timeSource := func() time.Time {
+		return clock
+	}
+
+	client := newClient(ts.URL, clientID, clientSecret, softExpire, timeSource)
 
 	// send 1
 
@@ -157,7 +163,7 @@ func TestClientCredentialsExpiration(t *testing.T) {
 		}
 	}
 
-	time.Sleep(time.Second * time.Duration(expireIn+1))
+	clock = clock.Add(time.Second * time.Duration(expireIn+1))
 
 	// send 3
 
@@ -263,13 +269,14 @@ func newTokenServer(serverInfo *serverStat, clientID, clientSecret, token string
 	}))
 }
 
-func newClient(tokenURL, clientID, clientSecret string, softExpire int) *Client {
+func newClient(tokenURL, clientID, clientSecret string, softExpire int, timeSource func() time.Time) *Client {
 	options := Options{
 		TokenURL:            tokenURL,
 		ClientID:            clientID,
 		ClientSecret:        clientSecret,
 		HTTPClient:          http.DefaultClient,
 		SoftExpireInSeconds: softExpire,
+		TimeSource:          timeSource,
 	}
 
 	client := New(options)
