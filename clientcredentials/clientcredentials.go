@@ -34,7 +34,7 @@ type Options struct {
 	Cache TokenCache
 
 	// Time source used to check token expiration.
-	// If unspecified, defaults to time.Time().
+	// If unspecified, defaults to time.Now().
 	TimeSource func() time.Time
 }
 
