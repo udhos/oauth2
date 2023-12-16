@@ -44,7 +44,7 @@ func main() {
 	flag.StringVar(&app.targetBody, "targetBody", "targetBody", "target body")
 	flag.IntVar(&app.count, "count", 2, "how many requests to send")
 	flag.IntVar(&app.softExpireSeconds, "softExpireSeconds", 10, "token soft expire in seconds")
-	flag.DurationVar(&app.interval, "interval", 2*time.Second, "interval bewteen sends")
+	flag.DurationVar(&app.interval, "interval", 2*time.Second, "interval between sends")
 	flag.StringVar(&app.cache, "cache", "", `cache: empty means default memory cache; file:<path> means filecache; error means errorcache`)
 
 	flag.Parse()
