@@ -151,21 +151,11 @@ func TestConcurrency(t *testing.T) {
 	for i := 1; i < 100; i++ {
 		wg.Add(1)
 		go func() {
-			// send 1
 
-			{
+			for j := 1; j < 100; j++ {
 				_, errSend := send(client, srv.URL)
 				if errSend != nil {
 					t.Errorf("send1: %v", errSend)
-				}
-			}
-
-			// send 2
-
-			{
-				_, errSend := send(client, srv.URL)
-				if errSend != nil {
-					t.Errorf("send2: %v", errSend)
 				}
 			}
 

@@ -175,13 +175,13 @@ func parseToken(buf []byte) (tokenInfo, error) {
 		return info, fmt.Errorf("missing access_token field in token response")
 	}
 
-	if accessToken == "" {
-		return info, fmt.Errorf("empty access_token in token response")
-	}
-
 	tokenStr, isStr := accessToken.(string)
 	if !isStr {
 		return info, fmt.Errorf("non-string value for access_token field in token response")
+	}
+
+	if tokenStr == "" {
+		return info, fmt.Errorf("empty access_token in token response")
 	}
 
 	info.accessToken = tokenStr
