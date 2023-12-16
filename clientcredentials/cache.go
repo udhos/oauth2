@@ -4,9 +4,9 @@ import "sync"
 
 // TokenCache defines a cache interface for storing tokens.
 type TokenCache interface {
-	Get() Token
-	Put(t Token)
-	Expire()
+	Get() (Token, error)
+	Put(t Token) error
+	Expire() error
 }
 
 type memoryCache struct {
@@ -14,23 +14,25 @@ type memoryCache struct {
 	mutex sync.Mutex
 }
 
-func (mc *memoryCache) Get() Token {
+func (mc *memoryCache) Get() (Token, error) {
 	mc.mutex.Lock()
 	t := mc.t
 	mc.mutex.Unlock()
-	return t
+	return t, nil
 }
 
-func (mc *memoryCache) Put(t Token) {
+func (mc *memoryCache) Put(t Token) error {
 	mc.mutex.Lock()
 	mc.t = t
 	mc.mutex.Unlock()
+	return nil
 }
 
-func (mc *memoryCache) Expire() {
+func (mc *memoryCache) Expire() error {
 	mc.mutex.Lock()
 	mc.t.Expire()
 	mc.mutex.Unlock()
+	return nil
 }
 
 // DefaultTokenCache provides default implementation for token cache.

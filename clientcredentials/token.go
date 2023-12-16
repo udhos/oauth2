@@ -1,15 +1,31 @@
 package clientcredentials
 
 import (
+	"encoding/json"
 	"log"
 	"time"
 )
 
 // Token holds a token.
 type Token struct {
-	Value     string
-	Deadline  time.Time
-	Expirable bool
+	Value     string    `json:"value"`
+	Deadline  time.Time `json:"deadline"`
+	Expirable bool      `json:"expirable"`
+}
+
+// NewTokenFromJSON creates token from json.
+func NewTokenFromJSON(buf []byte) (Token, error) {
+	var t Token
+	err := json.Unmarshal(buf, &t)
+	if err != nil {
+		return t, err
+	}
+	return t, nil
+}
+
+// ExportJSON exports token as json.
+func (t Token) ExportJSON() ([]byte, error) {
+	return json.Marshal(t)
 }
 
 // IsValid checks whether token is valid.

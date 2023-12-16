@@ -74,7 +74,9 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	resp, errResp := c.send(req, accessToken)
 
 	if resp.StatusCode == 401 {
-		c.options.Cache.Expire()
+		if err := c.options.Cache.Expire(); err != nil {
+			log.Printf("cache expire error: %v", err)
+		}
 	}
 
 	return resp, errResp
@@ -86,7 +88,11 @@ func (c *Client) send(req *http.Request, accessToken string) (*http.Response, er
 }
 
 func (c *Client) getToken() (string, error) {
-	t := c.options.Cache.Get()
+	t, errCache := c.options.Cache.Get()
+	if errCache != nil {
+		log.Printf("cache get error: %v", errCache)
+		return c.fetchToken()
+	}
 	softExpire := time.Duration(c.options.SoftExpireInSeconds) * time.Second
 	now := c.options.TimeSource()
 	if t.IsValid(now, softExpire) {
@@ -150,7 +156,9 @@ func (c *Client) fetchToken() (string, error) {
 	}
 
 	log.Printf("saving new token")
-	c.options.Cache.Put(newToken)
+	if err := c.options.Cache.Put(newToken); err != nil {
+		log.Printf("cache put error: %v", err)
+	}
 
 	return newToken.Value, nil
 }

@@ -9,8 +9,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/udhos/oauth2/cache/filecache"
 	"github.com/udhos/oauth2/clientcredentials"
 )
 
@@ -25,6 +27,7 @@ type application struct {
 	count             int
 	softExpireSeconds int
 	interval          time.Duration
+	cache             string
 }
 
 func main() {
@@ -41,8 +44,23 @@ func main() {
 	flag.IntVar(&app.count, "count", 2, "how many requests to send")
 	flag.IntVar(&app.softExpireSeconds, "softExpireSeconds", 10, "token soft expire in seconds")
 	flag.DurationVar(&app.interval, "interval", 2*time.Second, "interval bewteen sends")
+	flag.StringVar(&app.cache, "cache", "", "cache")
 
 	flag.Parse()
+
+	var cache clientcredentials.TokenCache
+
+	switch {
+	case app.cache == "":
+	case strings.HasPrefix(app.cache, "file:"):
+		var errCache error
+		cache, errCache = filecache.New(strings.TrimPrefix(app.cache, "file:"))
+		if errCache != nil {
+			log.Fatalf("cache=%s: %v", app.cache, errCache)
+		}
+	default:
+		log.Fatalf("unknown cache: %s", app.cache)
+	}
 
 	options := clientcredentials.Options{
 		TokenURL:            app.tokenURL,
@@ -51,6 +69,7 @@ func main() {
 		Scope:               app.scope,
 		HTTPClient:          http.DefaultClient,
 		SoftExpireInSeconds: app.softExpireSeconds,
+		Cache:               cache,
 	}
 
 	client := clientcredentials.New(options)
