@@ -25,7 +25,7 @@ options := clientcredentials.Options{
 
 client := clientcredentials.New(options)
 
-req, errReq := http.NewRequestWithContext(context.TODO(), "GET" "https://server/resource", nil)
+req, errReq := http.NewRequestWithContext(context.TODO(), "GET", "https://server/resource", nil)
 if errReq != nil {
     log.Fatalf("%s: request: %v", label, errReq)
 }
