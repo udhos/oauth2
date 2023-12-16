@@ -148,11 +148,11 @@ func TestConcurrency(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for i := 1; i < 100; i++ {
+	for i := 0; i < 100; i++ {
 		wg.Add(1)
 		go func() {
 
-			for j := 1; j < 100; j++ {
+			for j := 0; j < 100; j++ {
 				_, errSend := send(client, srv.URL)
 				if errSend != nil {
 					t.Errorf("send1: %v", errSend)
