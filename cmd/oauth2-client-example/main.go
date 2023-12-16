@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/udhos/oauth2/cache/errorcache"
 	"github.com/udhos/oauth2/cache/filecache"
 	"github.com/udhos/oauth2/clientcredentials"
 )
@@ -44,7 +45,7 @@ func main() {
 	flag.IntVar(&app.count, "count", 2, "how many requests to send")
 	flag.IntVar(&app.softExpireSeconds, "softExpireSeconds", 10, "token soft expire in seconds")
 	flag.DurationVar(&app.interval, "interval", 2*time.Second, "interval bewteen sends")
-	flag.StringVar(&app.cache, "cache", "", `cache: empty means default memory cache; file:<path> means filecache`)
+	flag.StringVar(&app.cache, "cache", "", `cache: empty means default memory cache; file:<path> means filecache; error means errorcache`)
 
 	flag.Parse()
 
@@ -52,6 +53,12 @@ func main() {
 
 	switch {
 	case app.cache == "":
+	case app.cache == "error":
+		var errCache error
+		cache, errCache = errorcache.New()
+		if errCache != nil {
+			log.Fatalf("cache=%s: %v", app.cache, errCache)
+		}
 	case strings.HasPrefix(app.cache, "file:"):
 		var errCache error
 		cache, errCache = filecache.New(strings.TrimPrefix(app.cache, "file:"))
