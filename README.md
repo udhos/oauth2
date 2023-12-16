@@ -6,7 +6,7 @@
 
 * [Features](#features)
 * [Usage](#usage)
-* [Examnple](#examnple)
+* [Example](#example)
 * [Quick Test](#quick-test)
 * [Development](#development)
 * [References](#references)
@@ -46,7 +46,7 @@ if errDo != nil {
 defer resp.Body.Close()
 ```
 
-# Examnple
+# Example
 
 See [cmd/oauth2-client-example/main.go](cmd/oauth2-client-example/main.go).
 
