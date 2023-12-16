@@ -1,4 +1,14 @@
+[![license](http://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/udhos/oauth2/blob/main/LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/udhos/oauth2)](https://goreportcard.com/report/github.com/udhos/oauth2)
+[![Go Reference](https://pkg.go.dev/badge/github.com/udhos/oauth2.svg)](https://pkg.go.dev/github.com/udhos/oauth2)
+
 # oauth2
+
+# Features
+
+- [X] oauth2 client_credentials flow.
+- [X] plugable cache.
+- [ ] singleflight.
 
 # Usage
 
