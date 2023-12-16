@@ -59,15 +59,19 @@ func TestParseToken(t *testing.T) {
 			continue
 		}
 
+		var errored bool
+
 		if info.accessToken != data.expectAcessToken {
 			t.Errorf("%s: expectedAccessToken=%s gotAccessToken=%s", data.name, data.expectAcessToken, info.accessToken)
+			errored = true
 		}
 
 		if info.expiresIn != data.expectExpire {
 			t.Errorf("%s: expectedExpire=%v gotExpire=%v", data.name, data.expectExpire, info.expiresIn)
+			errored = true
 		}
 
-		if !t.Failed() {
+		if !errored {
 			t.Logf("%s: ok", data.name)
 		}
 	}
