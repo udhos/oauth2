@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -121,6 +122,58 @@ func TestClientCredentials(t *testing.T) {
 	if serverStat.count != 2 {
 		t.Errorf("unexpected server access count: %d", serverStat.count)
 	}
+}
+
+func TestConcurrency(t *testing.T) {
+
+	clientID := "clientID"
+	clientSecret := "clientSecret"
+	token := "abc"
+	expireIn := 0
+	softExpire := 0
+	timeSource := (func() time.Time)(nil)
+
+	tokenServerStat := serverStat{}
+	serverStat := serverStat{}
+
+	ts := newTokenServer(&tokenServerStat, clientID, clientSecret, token, expireIn)
+	defer ts.Close()
+
+	validToken := func(t string) bool { return t == token }
+
+	srv := newServer(&serverStat, validToken)
+	defer srv.Close()
+
+	client := newClient(ts.URL, clientID, clientSecret, softExpire, timeSource)
+
+	var wg sync.WaitGroup
+
+	for i := 1; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			// send 1
+
+			{
+				_, errSend := send(client, srv.URL)
+				if errSend != nil {
+					t.Errorf("send1: %v", errSend)
+				}
+			}
+
+			// send 2
+
+			{
+				_, errSend := send(client, srv.URL)
+				if errSend != nil {
+					t.Errorf("send2: %v", errSend)
+				}
+			}
+
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
 }
 
 func TestClientCredentialsExpiration(t *testing.T) {
@@ -468,7 +521,7 @@ func formParam(r *http.Request, key string) string {
 
 func newServer(stat *serverStat, validToken func(token string) bool) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		stat.count++
+		stat.inc()
 		h := r.Header.Get("Authorization")
 		t := strings.TrimPrefix(h, "Bearer ")
 		if !validToken(t) {
@@ -492,12 +545,19 @@ func httpJSON(w http.ResponseWriter, message string, code int) {
 
 type serverStat struct {
 	count int
+	mutex sync.Mutex
+}
+
+func (stat *serverStat) inc() {
+	stat.mutex.Lock()
+	stat.count++
+	stat.mutex.Unlock()
 }
 
 func newTokenServer(serverInfo *serverStat, clientID, clientSecret, token string, expireIn int) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		serverInfo.count++
+		serverInfo.inc()
 
 		r.ParseForm()
 		formGrantType := formParam(r, "grant_type")
@@ -523,7 +583,7 @@ func newTokenServer(serverInfo *serverStat, clientID, clientSecret, token string
 
 func newTokenServerBroken(serverInfo *serverStat) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		serverInfo.count++
+		serverInfo.inc()
 		httpJSON(w, "broken-token", http.StatusOK)
 	}))
 }

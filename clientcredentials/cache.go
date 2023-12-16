@@ -1,5 +1,7 @@
 package clientcredentials
 
+import "sync"
+
 // TokenCache defines a cache interface for storing tokens.
 type TokenCache interface {
 	Get() Token
@@ -8,19 +10,27 @@ type TokenCache interface {
 }
 
 type memoryCache struct {
-	t Token
+	t     Token
+	mutex sync.Mutex
 }
 
 func (mc *memoryCache) Get() Token {
-	return mc.t
+	mc.mutex.Lock()
+	t := mc.t
+	mc.mutex.Unlock()
+	return t
 }
 
 func (mc *memoryCache) Put(t Token) {
+	mc.mutex.Lock()
 	mc.t = t
+	mc.mutex.Unlock()
 }
 
 func (mc *memoryCache) Expire() {
+	mc.mutex.Lock()
 	mc.t.Expire()
+	mc.mutex.Unlock()
 }
 
 // DefaultTokenCache provides default implementation for token cache.
