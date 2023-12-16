@@ -37,14 +37,14 @@ func main() {
 	flag.StringVar(&app.tokenURL, "tokenURL", "http://localhost:8080/oauth/token", "token URL")
 	flag.StringVar(&app.clientID, "clientID", "admin", "client ID")
 	flag.StringVar(&app.clientSecret, "clientSecret", "admin", "client secret")
-	flag.StringVar(&app.scope, "scope", "", "scope")
+	flag.StringVar(&app.scope, "scope", "", "space-delimited list of scopes")
 	flag.StringVar(&app.targetURL, "targetURL", "https://httpbin.org/get", "target URL")
 	flag.StringVar(&app.targetMethod, "targetMethod", "GET", "target method")
 	flag.StringVar(&app.targetBody, "targetBody", "targetBody", "target body")
 	flag.IntVar(&app.count, "count", 2, "how many requests to send")
 	flag.IntVar(&app.softExpireSeconds, "softExpireSeconds", 10, "token soft expire in seconds")
 	flag.DurationVar(&app.interval, "interval", 2*time.Second, "interval bewteen sends")
-	flag.StringVar(&app.cache, "cache", "", "cache")
+	flag.StringVar(&app.cache, "cache", "", `cache: empty means default memory cache; file:<path> means filecache`)
 
 	flag.Parse()
 
