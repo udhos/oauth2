@@ -8,9 +8,16 @@ import (
 
 // Token holds a token.
 type Token struct {
-	Value     string    `json:"value"`
-	Deadline  time.Time `json:"deadline"`
-	Expirable bool      `json:"expirable"`
+	Value    string    `json:"value"`
+	Deadline time.Time `json:"deadline"`
+
+	// By default Token is non-expirable.
+	// It becomes expirable when either Expire() or SetExpiration() is applied.
+	// SetExpiration() is used to take explicit expires_in field into effect.
+	// Expire() is used to invalidate the Token, since the server
+	// refused it and a new one must be retrieved.
+	//
+	Expirable bool `json:"expirable"`
 }
 
 // NewTokenFromJSON creates token from json.
