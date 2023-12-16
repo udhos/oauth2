@@ -4,6 +4,15 @@
 
 # oauth2
 
+* [Features](#features)
+* [Usage](#usage)
+* [Examnple](#examnple)
+* [Quick Test](#quick-test)
+* [Development](#development)
+* [References](#references)
+
+Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
+
 # Features
 
 - [X] oauth2 client_credentials flow.
@@ -37,16 +46,28 @@ if errDo != nil {
 defer resp.Body.Close()
 ```
 
-# Test
+# Examnple
 
-https://oauth.tools/collection/1599045253169-GHF
+See [cmd/oauth2-client-example/main.go](cmd/oauth2-client-example/main.go).
+
+# Quick Test
+
+Test using this token server: https://oauth.tools/collection/1599045253169-GHF
 
 ```bash
-go install ./...
+go install github.com/udhos/oauth2/cmd/oauth2-client-example@latest
 
 oauth2-client-example -tokenURL https://login-demo.curity.io/oauth/v2/oauth-token -clientID demo-backend-client -clientSecret MJlO3binatD9jk1
 
 oauth2-client-example -tokenURL https://login-demo.curity.io/oauth/v2/oauth-token -clientID demo-backend-client -clientSecret MJlO3binatD9jk1 -cache file:/tmp/cache
+```
+
+# Development
+
+```
+git clone https://github.com/udhos/oauth2
+cd oauth2
+./build.sh
 ```
 
 # References
