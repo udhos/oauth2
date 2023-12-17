@@ -4,12 +4,17 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/udhos/oauth2/cache"
+	"github.com/udhos/oauth2/token"
 )
 
 const (
@@ -97,7 +102,7 @@ func TestClientCredentials(t *testing.T) {
 	srv := newServer(&serverStat, validToken)
 	defer srv.Close()
 
-	client := newClient(ts.URL, clientID, clientSecret, softExpire, timeSource)
+	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource)
 
 	// send 1
 
@@ -148,7 +153,7 @@ func TestConcurrency(t *testing.T) {
 	srv := newServer(&serverStat, validToken)
 	defer srv.Close()
 
-	client := newClient(ts.URL, clientID, clientSecret, softExpire, timeSource)
+	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource)
 
 	var wg sync.WaitGroup
 
@@ -194,7 +199,7 @@ func TestClientCredentialsExpiration(t *testing.T) {
 		return clock
 	}
 
-	client := newClient(ts.URL, clientID, clientSecret, softExpire, timeSource)
+	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource)
 
 	// send 1
 
@@ -266,7 +271,7 @@ func TestForcedExpiration(t *testing.T) {
 		return clock
 	}
 
-	client := newClient(ts.URL, clientID, clientSecret, softExpire, timeSource)
+	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource)
 
 	// send 1: get first token
 
@@ -352,7 +357,7 @@ func TestTokenServerBrokenURL(t *testing.T) {
 	srv := newServer(&serverStat, validToken)
 	defer srv.Close()
 
-	client := newClient("broken-url", clientID, clientSecret, softExpire, timeSource)
+	client := newClient(t, "broken-url", clientID, clientSecret, softExpire, timeSource)
 
 	// send 1
 
@@ -381,7 +386,7 @@ func TestBrokenTokenServer(t *testing.T) {
 	srv := newServer(&serverStat, validToken)
 	defer srv.Close()
 
-	client := newClient(ts.URL, clientID, clientSecret, softExpire, timeSource)
+	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource)
 
 	// send 1
 
@@ -435,7 +440,7 @@ func TestLockedTokenServer(t *testing.T) {
 	srv := newServer(&serverStat, validToken)
 	defer srv.Close()
 
-	client := newClient(ts.URL, clientID, clientSecret, softExpire, timeSource)
+	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource)
 
 	// send 1
 
@@ -582,7 +587,21 @@ func newTokenServerBroken(serverInfo *serverStat) *httptest.Server {
 	}))
 }
 
-func newClient(tokenURL, clientID, clientSecret string, softExpire int, timeSource func() time.Time) *Client {
+func newClient(t *testing.T, tokenURL, clientID, clientSecret string, softExpire int, timeSource func() time.Time) *Client {
+
+	var c token.TokenCache
+
+	if cacheStr := os.Getenv("CACHE"); cacheStr != "" {
+		t.Logf("cache: CACHE=%s", cacheStr)
+		cc, errCache := cache.New(cacheStr)
+		if errCache != nil {
+			t.Errorf("test: newClient: %v", errCache)
+			log.Fatalf("test: newClient: %v", errCache)
+			return nil
+		}
+		c = cc
+	}
+
 	options := Options{
 		TokenURL:            tokenURL,
 		ClientID:            clientID,
@@ -591,6 +610,7 @@ func newClient(tokenURL, clientID, clientSecret string, softExpire int, timeSour
 		HTTPClient:          http.DefaultClient,
 		SoftExpireInSeconds: softExpire,
 		TimeSource:          timeSource,
+		Cache:               c,
 	}
 
 	client := New(options)

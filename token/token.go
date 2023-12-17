@@ -1,4 +1,5 @@
-package clientcredentials
+// Package token implements Token.
+package token
 
 import (
 	"encoding/json"

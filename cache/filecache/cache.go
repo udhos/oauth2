@@ -5,7 +5,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/udhos/oauth2/clientcredentials"
+	"github.com/udhos/oauth2/token"
 )
 
 // Cache holds cache client.
@@ -20,28 +20,28 @@ func New(filename string) (*Cache, error) {
 }
 
 // Get retrieves token from cache.
-func (c *Cache) Get() (clientcredentials.Token, error) {
+func (c *Cache) Get() (token.Token, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	return tokenFromFile(c.filename)
 }
 
-func tokenFromFile(filename string) (clientcredentials.Token, error) {
+func tokenFromFile(filename string) (token.Token, error) {
 	buf, errRead := os.ReadFile(filename)
 	if errRead != nil {
-		return clientcredentials.Token{}, errRead
+		return token.Token{}, errRead
 	}
-	return clientcredentials.NewTokenFromJSON(buf)
+	return token.NewTokenFromJSON(buf)
 }
 
 // Put inserts token into cache.
-func (c *Cache) Put(t clientcredentials.Token) error {
+func (c *Cache) Put(t token.Token) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	return saveToken(t, c.filename)
 }
 
-func saveToken(t clientcredentials.Token, filename string) error {
+func saveToken(t token.Token, filename string) error {
 	out, errOpen := os.Create(filename)
 	if errOpen != nil {
 		return errOpen

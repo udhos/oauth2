@@ -4,7 +4,7 @@ package errorcache
 import (
 	"errors"
 
-	"github.com/udhos/oauth2/clientcredentials"
+	"github.com/udhos/oauth2/token"
 )
 
 // Cache holds cache client.
@@ -19,12 +19,12 @@ func New() (*Cache, error) {
 var errAlways = errors.New("errorcache error always")
 
 // Get retrieves token from cache.
-func (c *Cache) Get() (clientcredentials.Token, error) {
-	return clientcredentials.Token{}, errAlways
+func (c *Cache) Get() (token.Token, error) {
+	return token.Token{}, errAlways
 }
 
 // Put inserts token into cache.
-func (c *Cache) Put(_ clientcredentials.Token) error {
+func (c *Cache) Put(_ token.Token) error {
 	return errAlways
 }
 

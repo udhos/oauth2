@@ -1,4 +1,4 @@
-package clientcredentials
+package token
 
 import (
 	"testing"

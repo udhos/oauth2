@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/udhos/oauth2/token"
 )
 
 // Options define client options.
@@ -31,7 +33,7 @@ type Options struct {
 	//
 	SoftExpireInSeconds int
 
-	Cache TokenCache
+	Cache token.TokenCache
 
 	// Time source used to check token expiration.
 	// If unspecified, defaults to time.Now().
@@ -52,7 +54,7 @@ func New(options Options) *Client {
 		options.SoftExpireInSeconds = 0
 	}
 	if options.Cache == nil {
-		options.Cache = DefaultTokenCache
+		options.Cache = token.DefaultTokenCache
 	}
 	if options.TimeSource == nil {
 		options.TimeSource = time.Now
@@ -147,7 +149,7 @@ func (c *Client) fetchToken() (string, error) {
 		return "", fmt.Errorf("parse token: %v", errParse)
 	}
 
-	newToken := Token{
+	newToken := token.Token{
 		Value: info.accessToken,
 	}
 

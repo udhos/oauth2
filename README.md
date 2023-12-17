@@ -6,8 +6,9 @@
 
 * [Features](#features)
 * [Usage](#usage)
-* [Example](#example)
-* [Quick Test](#quick-test)
+* [Example client](#example-client)
+* [Test with example client](#test-with-example-client)
+* [Test caches](#test-caches)
 * [Development](#development)
 * [References](#references)
 
@@ -46,11 +47,11 @@ if errDo != nil {
 defer resp.Body.Close()
 ```
 
-# Example
+# Example client
 
 See [cmd/oauth2-client-example/main.go](cmd/oauth2-client-example/main.go).
 
-# Quick Test
+# Test with example client
 
 Test using this token server: https://oauth.tools/collection/1599045253169-GHF
 
@@ -64,9 +65,18 @@ oauth2-client-example -tokenURL https://login-demo.curity.io/oauth/v2/oauth-toke
 oauth2-client-example -tokenURL https://login-demo.curity.io/oauth/v2/oauth-token -clientID demo-backend-client -clientSecret MJlO3binatD9jk1 -cache error
 ```
 
+# Test caches
+
+Set the cache with the env var `CACHE`, then run the tests.
+
+```bash
+export CACHE=file:/tmp/cache
+go test -race ./...
+```
+
 # Development
 
-```
+```bash
 git clone https://github.com/udhos/oauth2
 cd oauth2
 ./build.sh

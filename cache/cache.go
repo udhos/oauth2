@@ -7,11 +7,11 @@ import (
 
 	"github.com/udhos/oauth2/cache/errorcache"
 	"github.com/udhos/oauth2/cache/filecache"
-	"github.com/udhos/oauth2/clientcredentials"
+	"github.com/udhos/oauth2/token"
 )
 
 // New creates cache from string.
-func New(s string) (clientcredentials.TokenCache, error) {
+func New(s string) (token.TokenCache, error) {
 	switch {
 	case s == "":
 		return nil, nil
