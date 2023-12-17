@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/segmentio/ksuid"
 
 	"github.com/udhos/oauth2/token"
 )
@@ -31,6 +32,19 @@ func New(redisString string) (*Cache, error) {
 	port := fields[1]
 	password := fields[2]
 	key := fields[3]
+
+	if host == "" {
+		host = "localhost"
+	}
+
+	if port == "" {
+		port = "6379"
+	}
+
+	if key == "" {
+		key = ksuid.New().String()
+	}
+
 	c := Cache{
 		redisClient: redis.NewClient(&redis.Options{
 			Addr:     fmt.Sprintf("%s:%s", host, port),
