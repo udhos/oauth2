@@ -129,7 +129,7 @@ func (c *Client) fetchToken() (string, error) {
 
 	str, isStr := result.(string)
 	if !isStr {
-		return "", fmt.Errorf("non-string result: %T: %v", result, result)
+		return "", fmt.Errorf("non-string result: type:%[1]T value:%[1]v", result)
 	}
 
 	return str, nil
