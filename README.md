@@ -76,9 +76,11 @@ oauth2-client-example -tokenURL https://login-demo.curity.io/oauth/v2/oauth-toke
 Set the cache with the env var `CACHE`, then run the tests.
 
 ```bash
+# Test file cache
 export CACHE=file:/tmp/cache
 go test -race ./...
 
+# Test redis cache
 ./run-redis-local.sh
 export CACHE=redis:localhost:6379::oauth2-client-example
 go test -race ./...
