@@ -90,6 +90,7 @@ func TestClientCredentials(t *testing.T) {
 	expireIn := 0
 	softExpire := 0
 	timeSource := (func() time.Time)(nil)
+	disableSingleflight := false
 
 	tokenServerStat := serverStat{}
 	serverStat := serverStat{}
@@ -102,7 +103,7 @@ func TestClientCredentials(t *testing.T) {
 	srv := newServer(&serverStat, validToken)
 	defer srv.Close()
 
-	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource)
+	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource, disableSingleflight)
 
 	// send 1
 
@@ -141,6 +142,7 @@ func TestConcurrency(t *testing.T) {
 	expireIn := 0
 	softExpire := 0
 	timeSource := (func() time.Time)(nil)
+	disableSingleflight := false
 
 	tokenServerStat := serverStat{}
 	serverStat := serverStat{}
@@ -153,7 +155,7 @@ func TestConcurrency(t *testing.T) {
 	srv := newServer(&serverStat, validToken)
 	defer srv.Close()
 
-	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource)
+	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource, disableSingleflight)
 
 	var wg sync.WaitGroup
 
@@ -175,6 +177,142 @@ func TestConcurrency(t *testing.T) {
 	wg.Wait()
 }
 
+// go test -run TestSingleFlight -count 1 ./clientcredentials
+func TestSingleFlight(t *testing.T) {
+
+	clientID := "clientID"
+	clientSecret := "clientSecret"
+	token := "abc"
+	expireIn := 0
+	softExpire := 0
+	timeSource := (func() time.Time)(nil)
+	disableSingleflight := false
+
+	tokenServerStat := serverStat{}
+	serverStat := serverStat{}
+
+	ts := newTokenServer(&tokenServerStat, clientID, clientSecret, token, expireIn)
+	defer ts.Close()
+
+	validToken := func(t string) bool { return t == token }
+
+	srv := newServer(&serverStat, validToken)
+	defer srv.Close()
+
+	//
+	// error cache forces token retrieval for every request
+	//
+	oldCache := os.Getenv("CACHE")
+	os.Setenv("CACHE", "error")
+	defer os.Setenv("CACHE", oldCache)
+
+	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource, disableSingleflight)
+
+	//
+	// fire concurrent requests
+	//
+
+	goroutines := 100
+	requestsPerGoroutine := 100
+	total := goroutines * requestsPerGoroutine
+
+	var wg sync.WaitGroup
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func() {
+
+			for j := 0; j < requestsPerGoroutine; j++ {
+				_, errSend := send(client, srv.URL)
+				if errSend != nil {
+					t.Errorf("send1: %v", errSend)
+				}
+			}
+
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+
+	//
+	// check requests count
+	//
+
+	t.Logf("requests: total=%d tokens=%d server=%d", total, tokenServerStat.count, serverStat.count)
+
+	if total <= tokenServerStat.count {
+		t.Errorf("singleflight didnt save token requests: total=%d tokens=%d server=%d",
+			total, tokenServerStat.count, serverStat.count)
+	}
+}
+
+// go test -run TestDisableSingleFlight -count 1 ./clientcredentials
+func TestDisableSingleFlight(t *testing.T) {
+
+	clientID := "clientID"
+	clientSecret := "clientSecret"
+	token := "abc"
+	expireIn := 0
+	softExpire := 0
+	timeSource := (func() time.Time)(nil)
+	disableSingleflight := true
+
+	tokenServerStat := serverStat{}
+	serverStat := serverStat{}
+
+	ts := newTokenServer(&tokenServerStat, clientID, clientSecret, token, expireIn)
+	defer ts.Close()
+
+	validToken := func(t string) bool { return t == token }
+
+	srv := newServer(&serverStat, validToken)
+	defer srv.Close()
+
+	//
+	// error cache forces token retrieval for every request
+	//
+	oldCache := os.Getenv("CACHE")
+	os.Setenv("CACHE", "error")
+	defer os.Setenv("CACHE", oldCache)
+
+	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource, disableSingleflight)
+
+	//
+	// fire concurrent requests
+	//
+
+	goroutines := 100
+	requestsPerGoroutine := 100
+	total := goroutines * requestsPerGoroutine
+
+	var wg sync.WaitGroup
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func() {
+
+			for j := 0; j < requestsPerGoroutine; j++ {
+				_, errSend := send(client, srv.URL)
+				if errSend != nil {
+					t.Errorf("send1: %v", errSend)
+				}
+			}
+
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+
+	//
+	// check requests count
+	//
+
+	t.Logf("requests: total=%d tokens=%d server=%d", total, tokenServerStat.count, serverStat.count)
+
+	if total != tokenServerStat.count {
+		t.Errorf("unexpected different request count: total=%d tokens=%d server=%d",
+			total, tokenServerStat.count, serverStat.count)
+	}
+}
+
 func TestClientCredentialsExpiration(t *testing.T) {
 
 	clientID := "clientID"
@@ -182,6 +320,7 @@ func TestClientCredentialsExpiration(t *testing.T) {
 	token := "abc"
 	expireIn := 1
 	softExpire := -1 // disable soft expire
+	disableSingleflight := false
 
 	tokenServerStat := serverStat{}
 	serverStat := serverStat{}
@@ -199,7 +338,7 @@ func TestClientCredentialsExpiration(t *testing.T) {
 		return clock
 	}
 
-	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource)
+	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource, disableSingleflight)
 
 	// send 1
 
@@ -254,6 +393,7 @@ func TestForcedExpiration(t *testing.T) {
 	token := "abc"
 	expireIn := 60
 	softExpire := -1 // disable soft expire
+	disableSingleflight := false
 
 	tokenServerStat := serverStat{}
 	serverStat := serverStat{}
@@ -271,7 +411,7 @@ func TestForcedExpiration(t *testing.T) {
 		return clock
 	}
 
-	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource)
+	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource, disableSingleflight)
 
 	// send 1: get first token
 
@@ -349,6 +489,7 @@ func TestTokenServerBrokenURL(t *testing.T) {
 	token := "abc"
 	softExpire := 0
 	timeSource := (func() time.Time)(nil)
+	disableSingleflight := false
 
 	serverStat := serverStat{}
 
@@ -357,7 +498,7 @@ func TestTokenServerBrokenURL(t *testing.T) {
 	srv := newServer(&serverStat, validToken)
 	defer srv.Close()
 
-	client := newClient(t, "broken-url", clientID, clientSecret, softExpire, timeSource)
+	client := newClient(t, "broken-url", clientID, clientSecret, softExpire, timeSource, disableSingleflight)
 
 	// send 1
 
@@ -374,6 +515,7 @@ func TestBrokenTokenServer(t *testing.T) {
 	token := "abc"
 	softExpire := 0
 	timeSource := (func() time.Time)(nil)
+	disableSingleflight := false
 
 	tokenServerStat := serverStat{}
 	serverStat := serverStat{}
@@ -386,7 +528,7 @@ func TestBrokenTokenServer(t *testing.T) {
 	srv := newServer(&serverStat, validToken)
 	defer srv.Close()
 
-	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource)
+	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource, disableSingleflight)
 
 	// send 1
 
@@ -428,6 +570,7 @@ func TestLockedTokenServer(t *testing.T) {
 	expireIn := 60
 	softExpire := 0
 	timeSource := (func() time.Time)(nil)
+	disableSingleflight := false
 
 	tokenServerStat := serverStat{}
 	serverStat := serverStat{}
@@ -440,7 +583,7 @@ func TestLockedTokenServer(t *testing.T) {
 	srv := newServer(&serverStat, validToken)
 	defer srv.Close()
 
-	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource)
+	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource, disableSingleflight)
 
 	// send 1
 
@@ -587,7 +730,7 @@ func newTokenServerBroken(serverInfo *serverStat) *httptest.Server {
 	}))
 }
 
-func newClient(t *testing.T, tokenURL, clientID, clientSecret string, softExpire int, timeSource func() time.Time) *Client {
+func newClient(t *testing.T, tokenURL, clientID, clientSecret string, softExpire int, timeSource func() time.Time, disableSingleflight bool) *Client {
 
 	var c token.TokenCache
 
@@ -611,6 +754,7 @@ func newClient(t *testing.T, tokenURL, clientID, clientSecret string, softExpire
 		SoftExpireInSeconds: softExpire,
 		TimeSource:          timeSource,
 		Cache:               c,
+		DisableSingleFlight: disableSingleflight,
 	}
 
 	client := New(options)
