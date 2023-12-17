@@ -30,25 +30,32 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 
 ```golang
 import "github.com/udhos/oauth2/clientcredentials"
+import "github.com/udhos/oauth2/cache/rediscache"
+
+cache, errRedis := rediscache.New("localhost:6379::my-cache-key")
+if errRedis != nil {
+    log.Fatalf("redis: %v", errRedis)
+}
 
 options := clientcredentials.Options{
-    TokenURL:            "https://token-server/token",
-    ClientID:            "client-id",
-    ClientSecret:        "client-secret",
-    Scope:               "scope1 scope2",
-    HTTPClient:          http.DefaultClient,
+    TokenURL:     "https://token-server/token",
+    ClientID:     "client-id",
+    ClientSecret: "client-secret",
+    Scope:        "scope1 scope2",
+    HTTPClient:   http.DefaultClient,
+    Cache:        cache,
 }
 
 client := clientcredentials.New(options)
 
 req, errReq := http.NewRequestWithContext(context.TODO(), "GET", "https://server/resource", nil)
 if errReq != nil {
-    log.Fatalf("%s: request: %v", label, errReq)
+    log.Fatalf("request: %v", errReq)
 }
 
 resp, errDo := client.Do(req)
 if errDo != nil {
-    log.Fatalf("%s: do: %v", label, errDo)
+    log.Fatalf("do: %v", errDo)
 }
 defer resp.Body.Close()
 ```
