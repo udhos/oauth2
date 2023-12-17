@@ -44,12 +44,17 @@ func New(redisString string) (*Cache, error) {
 
 var errRedisCacheKeyNotFound = errors.New("redis cache error: key not found")
 
+// getKey generates a unique redis key for storing the token.
+func (c *Cache) getKey() string {
+	return "github.com/udhos/oauth2:token:" + c.key
+}
+
 // Get retrieves token from cache.
 func (c *Cache) Get() (token.Token, error) {
 
 	var t token.Token
 
-	cmdID := c.redisClient.Get(context.TODO(), c.key)
+	cmdID := c.redisClient.Get(context.TODO(), c.getKey())
 	errID := cmdID.Err()
 	if errID == redis.Nil {
 		return t, errRedisCacheKeyNotFound
@@ -73,7 +78,7 @@ func (c *Cache) Put(t token.Token) error {
 
 	expiration := time.Until(t.Deadline) + time.Minute // token remaining TTL + 1 minute
 
-	errSet := c.redisClient.Set(context.TODO(), c.key, buf, expiration)
+	errSet := c.redisClient.Set(context.TODO(), c.getKey(), buf, expiration)
 
 	return errSet.Err()
 }
