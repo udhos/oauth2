@@ -90,7 +90,11 @@ func (c *Cache) Put(t token.Token) error {
 		return errJSON
 	}
 
-	expiration := time.Until(t.Deadline) + time.Minute // token remaining TTL + 1 minute
+	var expiration time.Duration
+
+	if t.Expirable {
+		expiration = time.Until(t.Deadline) + time.Minute // token remaining TTL + 1 minute
+	}
 
 	errSet := c.redisClient.Set(context.TODO(), c.getKey(), buf, expiration)
 
