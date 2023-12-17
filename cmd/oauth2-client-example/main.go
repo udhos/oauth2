@@ -9,11 +9,9 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
-	"github.com/udhos/oauth2/cache/errorcache"
-	"github.com/udhos/oauth2/cache/filecache"
+	"github.com/udhos/oauth2/cache"
 	"github.com/udhos/oauth2/clientcredentials"
 )
 
@@ -49,24 +47,9 @@ func main() {
 
 	flag.Parse()
 
-	var cache clientcredentials.TokenCache
-
-	switch {
-	case app.cache == "":
-	case app.cache == "error":
-		var errCache error
-		cache, errCache = errorcache.New()
-		if errCache != nil {
-			log.Fatalf("cache=%s: %v", app.cache, errCache)
-		}
-	case strings.HasPrefix(app.cache, "file:"):
-		var errCache error
-		cache, errCache = filecache.New(strings.TrimPrefix(app.cache, "file:"))
-		if errCache != nil {
-			log.Fatalf("cache=%s: %v", app.cache, errCache)
-		}
-	default:
-		log.Fatalf("unknown cache: %s", app.cache)
+	cache, errCache := cache.New(app.cache)
+	if errCache != nil {
+		log.Fatalf("cache error: %s: %v", app.cache, errCache)
 	}
 
 	options := clientcredentials.Options{
