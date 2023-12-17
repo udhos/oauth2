@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/udhos/oauth2/cache"
@@ -16,17 +17,19 @@ import (
 )
 
 type application struct {
-	tokenURL          string
-	clientID          string
-	clientSecret      string
-	scope             string
-	targetURL         string
-	targetMethod      string
-	targetBody        string
-	count             int
-	softExpireSeconds int
-	interval          time.Duration
-	cache             string
+	tokenURL            string
+	clientID            string
+	clientSecret        string
+	scope               string
+	targetURL           string
+	targetMethod        string
+	targetBody          string
+	count               int
+	softExpireSeconds   int
+	interval            time.Duration
+	cache               string
+	disableSingleflight bool
+	concurrent          bool
 }
 
 func main() {
@@ -44,6 +47,8 @@ func main() {
 	flag.IntVar(&app.softExpireSeconds, "softExpireSeconds", 10, "token soft expire in seconds")
 	flag.DurationVar(&app.interval, "interval", 2*time.Second, "interval between sends")
 	flag.StringVar(&app.cache, "cache", "", "empty means default memory cache\n'file:<path>' means filecache (example: file:/tmp/cache)\n'error' means errorcache\nredis format: 'redis:<host>:<port>:<password>:<key>' (example: redis:localhost:6379::oauth2-client-example)")
+	flag.BoolVar(&app.disableSingleflight, "disableSingleflight", false, "disable singleflight")
+	flag.BoolVar(&app.concurrent, "concurrent", false, "concurrent requests")
 
 	flag.Parse()
 
@@ -60,10 +65,30 @@ func main() {
 		HTTPClient:          http.DefaultClient,
 		SoftExpireInSeconds: app.softExpireSeconds,
 		Cache:               cache,
+		DisableSingleFlight: app.disableSingleflight,
 	}
 
 	client := clientcredentials.New(options)
 
+	if app.concurrent {
+		//
+		// concurrent requests
+		//
+		var wg sync.WaitGroup
+		for i := 1; i <= app.count; i++ {
+			wg.Add(1)
+			go func() {
+				send(&app, client, i)
+				wg.Done()
+			}()
+		}
+		wg.Wait()
+		return
+	}
+
+	//
+	// non-concurrent requests
+	//
 	for i := 1; i <= app.count; i++ {
 		send(&app, client, i)
 	}

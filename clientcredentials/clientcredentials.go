@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/udhos/oauth2/token"
+	"golang.org/x/sync/singleflight"
 )
 
 // Options define client options.
@@ -38,11 +39,14 @@ type Options struct {
 	// Time source used to check token expiration.
 	// If unspecified, defaults to time.Now().
 	TimeSource func() time.Time
+
+	DisableSingleFlight bool
 }
 
 // Client is context for invokations with client-credentials flow.
 type Client struct {
 	options Options
+	group   singleflight.Group
 }
 
 // New creates a client.
@@ -105,8 +109,34 @@ func (c *Client) getToken() (string, error) {
 	return c.fetchToken()
 }
 
-// fetchTokens retrieves new token and saves into cache.
+// fetchTokens retrieves new token and saves into cache, guarded with singleflight.
 func (c *Client) fetchToken() (string, error) {
+
+	if c.options.DisableSingleFlight {
+		return c.fetchTokenRaw()
+	}
+
+	key := ""
+
+	f := func() (interface{}, error) {
+		return c.fetchTokenRaw()
+	}
+
+	result, errFetch, _ := c.group.Do(key, f)
+	if errFetch != nil {
+		return "", errFetch
+	}
+
+	str, isStr := result.(string)
+	if !isStr {
+		return "", fmt.Errorf("non-string result: %T: %v", result, result)
+	}
+
+	return str, nil
+}
+
+// fetchTokensRaw retrieves new token and saves into cache.
+func (c *Client) fetchTokenRaw() (string, error) {
 
 	begin := time.Now()
 

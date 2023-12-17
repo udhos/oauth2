@@ -24,7 +24,8 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 - [X] filesystem cache.
 - [X] testing-only error cache.
 - [X] redis cache.
-- [ ] singleflight.
+- [X] singleflight.
+- [ ] debug logs.
 
 # Usage
 
@@ -78,6 +79,26 @@ oauth2-client-example -tokenURL https://login-demo.curity.io/oauth/v2/oauth-toke
 oauth2-client-example -tokenURL https://login-demo.curity.io/oauth/v2/oauth-token -clientID demo-backend-client -clientSecret MJlO3binatD9jk1 -cache error
 
 oauth2-client-example -tokenURL https://login-demo.curity.io/oauth/v2/oauth-token -clientID demo-backend-client -clientSecret MJlO3binatD9jk1 -cache redis:localhost:6379::oauth2-client-example
+```
+
+# Test singleflight with example client
+
+Run token server at: http://localhost:8080/oauth/token
+
+Run server at: http://localhost:8000/v1/hello
+
+Cache error makes sure every request retrieves a new token: `-cache error`.
+
+1. Send requests with singlefligh:
+
+```bash
+oauth2-client-example -tokenURL http://localhost:8080/oauth/token -targetURL http://localhost:8000/v1/hello -cache error -interval 0 -concurrent -count 10
+```
+
+2. Send requests WITHOUT singlefligh:
+
+```bash
+oauth2-client-example -tokenURL http://localhost:8080/oauth/token -targetURL http://localhost:8000/v1/hello -cache error -interval 0 -concurrent -count 10 -disableSingleflight
 ```
 
 # Test caches
