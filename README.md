@@ -18,6 +18,10 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 
 - [X] oauth2 client_credentials flow.
 - [X] plugable cache.
+- [X] default memory cache.
+- [X] filesystem cache.
+- [X] testing-only error cache.
+- [X] redis cache.
 - [ ] singleflight.
 
 # Usage
@@ -63,6 +67,8 @@ oauth2-client-example -tokenURL https://login-demo.curity.io/oauth/v2/oauth-toke
 oauth2-client-example -tokenURL https://login-demo.curity.io/oauth/v2/oauth-token -clientID demo-backend-client -clientSecret MJlO3binatD9jk1 -cache file:/tmp/cache
 
 oauth2-client-example -tokenURL https://login-demo.curity.io/oauth/v2/oauth-token -clientID demo-backend-client -clientSecret MJlO3binatD9jk1 -cache error
+
+oauth2-client-example -tokenURL https://login-demo.curity.io/oauth/v2/oauth-token -clientID demo-backend-client -clientSecret MJlO3binatD9jk1 -cache redis:localhost:6379::oauth2-client-example
 ```
 
 # Test caches
@@ -71,6 +77,10 @@ Set the cache with the env var `CACHE`, then run the tests.
 
 ```bash
 export CACHE=file:/tmp/cache
+go test -race ./...
+
+./run-redis-local.sh
+export CACHE=redis:localhost:6379::oauth2-client-example
 go test -race ./...
 ```
 

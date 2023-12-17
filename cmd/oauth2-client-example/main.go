@@ -43,7 +43,7 @@ func main() {
 	flag.IntVar(&app.count, "count", 2, "how many requests to send")
 	flag.IntVar(&app.softExpireSeconds, "softExpireSeconds", 10, "token soft expire in seconds")
 	flag.DurationVar(&app.interval, "interval", 2*time.Second, "interval between sends")
-	flag.StringVar(&app.cache, "cache", "", `cache: empty means default memory cache; file:<path> means filecache; error means errorcache`)
+	flag.StringVar(&app.cache, "cache", "", "empty means default memory cache\n'file:<path>' means filecache (example: file:/tmp/cache)\n'error' means errorcache\nredis format: 'redis:<host>:<port>:<password>:<key>' (example: redis:localhost:6379::oauth2-client-example)")
 
 	flag.Parse()
 

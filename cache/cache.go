@@ -7,6 +7,7 @@ import (
 
 	"github.com/udhos/oauth2/cache/errorcache"
 	"github.com/udhos/oauth2/cache/filecache"
+	"github.com/udhos/oauth2/cache/rediscache"
 	"github.com/udhos/oauth2/token"
 )
 
@@ -19,6 +20,8 @@ func New(s string) (token.TokenCache, error) {
 		return errorcache.New()
 	case strings.HasPrefix(s, "file:"):
 		return filecache.New(strings.TrimPrefix(s, "file:"))
+	case strings.HasPrefix(s, "redis:"):
+		return rediscache.New(strings.TrimPrefix(s, "redis:"))
 	}
 	return nil, fmt.Errorf("unknown cache: %s", s)
 }
