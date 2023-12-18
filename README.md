@@ -10,6 +10,7 @@ https://github.com/udhos/oauth2 implements the oauth2 client_credentials flow wi
 * [Usage](#usage)
 * [Example client](#example-client)
 * [Test with example client](#test-with-example-client)
+* [Test singleflight with example client](#test-singleflight-with-example-client)
 * [Test caches](#test-caches)
 * [Development](#development)
 * [References](#references)
