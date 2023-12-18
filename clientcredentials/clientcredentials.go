@@ -80,6 +80,10 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	resp, errResp := c.send(req, accessToken)
 
 	if resp.StatusCode == 401 {
+		//
+		// the server refused our token, so we expire it in order to
+		// renew it at the next invokation.
+		//
 		if err := c.options.Cache.Expire(); err != nil {
 			log.Printf("cache expire error: %v", err)
 		}
