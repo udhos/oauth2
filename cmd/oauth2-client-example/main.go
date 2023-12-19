@@ -47,14 +47,14 @@ func main() {
 	flag.IntVar(&app.count, "count", 2, "how many requests to send")
 	flag.IntVar(&app.softExpireSeconds, "softExpireSeconds", 10, "token soft expire in seconds")
 	flag.DurationVar(&app.interval, "interval", 2*time.Second, "interval between sends")
-	flag.StringVar(&app.cache, "cache", "", "empty means default memory cache\n'file:<path>' means filecache (example: file:/tmp/cache)\n'error' means errorcache\nredis format: 'redis:<host>:<port>:<password>:<key>' (example: redis:localhost:6379::oauth2-client-example)")
+	flag.StringVar(&app.cache, "cache", "", "empty means default memory cache\n'file:<path>' means filecache (example: file:/tmp/cache)\n'error' means errorcache\nredis format: 'redis:<host>:<port>:<password>:<key>' (example: redis:localhost:6379::oauth2-client-example\nredis key: leave key empty for auto generation: 'redis:<host>:<port>:<password>:' (example: redis:localhost:6379::)")
 	flag.BoolVar(&app.disableSingleflight, "disableSingleflight", false, "disable singleflight")
 	flag.BoolVar(&app.concurrent, "concurrent", false, "concurrent requests")
 	flag.BoolVar(&app.debug, "debug", false, "enable debug logging")
 
 	flag.Parse()
 
-	cache, errCache := cache.New(app.cache)
+	cache, errCache := cache.New(app.cache, app.tokenURL, app.clientID)
 	if errCache != nil {
 		log.Fatalf("cache error: %s: %v", app.cache, errCache)
 	}

@@ -12,7 +12,7 @@ import (
 )
 
 // New creates cache from string.
-func New(s string) (token.TokenCache, error) {
+func New(s, tokenURL, clientID string) (token.TokenCache, error) {
 	switch {
 	case s == "":
 		return nil, nil
@@ -21,7 +21,13 @@ func New(s string) (token.TokenCache, error) {
 	case strings.HasPrefix(s, "file:"):
 		return filecache.New(strings.TrimPrefix(s, "file:"))
 	case strings.HasPrefix(s, "redis:"):
-		return rediscache.New(strings.TrimPrefix(s, "redis:"))
+		str := strings.TrimPrefix(s, "redis:")
+		options := rediscache.Options{
+			RedisString: str,
+			TokenURL:    tokenURL,
+			ClientID:    clientID,
+		}
+		return rediscache.New(options)
 	}
 	return nil, fmt.Errorf("unknown cache: %s", s)
 }

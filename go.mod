@@ -4,7 +4,6 @@ go 1.21.5
 
 require (
 	github.com/redis/go-redis/v9 v9.3.0
-	github.com/segmentio/ksuid v1.0.4
 	golang.org/x/sync v0.5.0
 )
 

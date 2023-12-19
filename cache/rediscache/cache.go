@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/segmentio/ksuid"
 
 	"github.com/udhos/oauth2/token"
 )
@@ -20,11 +19,19 @@ type Cache struct {
 	redisClient *redis.Client
 }
 
+// Options define redis options.
+type Options struct {
+	// Format: redisString = <host>:<port>:<password>:<key>
+	// Example: redisString = localhost:6379::oauth2-client-example
+	// Leave <key> empty for auto generation.
+	RedisString string
+	TokenURL    string // only used if AutoKey is enabled
+	ClientID    string // only used if AutoKey is enabled
+}
+
 // New creates a new cache client.
-// redisString = <host>:<port>:<password>:<key>
-// redisString = localhost:6379::oauth2-client-example
-func New(redisString string) (*Cache, error) {
-	fields := strings.SplitN(redisString, ":", 4)
+func New(options Options) (*Cache, error) {
+	fields := strings.SplitN(options.RedisString, ":", 4)
 	if len(fields) != 4 {
 		return nil, fmt.Errorf("4 fields are required, but got: %d", len(fields))
 	}
@@ -42,7 +49,7 @@ func New(redisString string) (*Cache, error) {
 	}
 
 	if key == "" {
-		key = ksuid.New().String()
+		key = "github.com/udhos/oauth2|" + options.TokenURL + "|" + options.ClientID + "|token"
 	}
 
 	c := Cache{
@@ -58,9 +65,9 @@ func New(redisString string) (*Cache, error) {
 
 var errRedisCacheKeyNotFound = errors.New("redis cache error: key not found")
 
-// getKey generates a unique redis key for storing the token.
+// getKey gets the redis key for storing the token.
 func (c *Cache) getKey() string {
-	return "github.com/udhos/oauth2:token:" + c.key
+	return c.key
 }
 
 // Get retrieves token from cache.

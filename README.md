@@ -79,6 +79,8 @@ oauth2-client-example -tokenURL https://login-demo.curity.io/oauth/v2/oauth-toke
 
 oauth2-client-example -tokenURL https://login-demo.curity.io/oauth/v2/oauth-token -clientID demo-backend-client -clientSecret MJlO3binatD9jk1 -cache error
 
+oauth2-client-example -tokenURL https://login-demo.curity.io/oauth/v2/oauth-token -clientID demo-backend-client -clientSecret MJlO3binatD9jk1 -cache redis:localhost:6379::
+
 oauth2-client-example -tokenURL https://login-demo.curity.io/oauth/v2/oauth-token -clientID demo-backend-client -clientSecret MJlO3binatD9jk1 -cache redis:localhost:6379::oauth2-client-example
 ```
 

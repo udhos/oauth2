@@ -769,7 +769,7 @@ func newClient(t *testing.T, tokenURL, clientID, clientSecret string, softExpire
 
 	if cacheStr := os.Getenv("CACHE"); cacheStr != "" {
 		t.Logf("cache: CACHE=%s", cacheStr)
-		cc, errCache := cache.New(cacheStr)
+		cc, errCache := cache.New(cacheStr, tokenURL, clientID)
 		if errCache != nil {
 			t.Fatalf("test: newClient: %v", errCache)
 			return nil
