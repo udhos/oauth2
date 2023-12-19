@@ -4,7 +4,7 @@
 
 # oauth2
 
-https://github.com/udhos/oauth2 implements the oauth2 client_credentials flow with plugable cache interface.
+https://github.com/udhos/oauth2 implements the oauth2 client_credentials flow with singleflight and plugable cache interface.
 
 * [Features](#features)
 * [Usage](#usage)
