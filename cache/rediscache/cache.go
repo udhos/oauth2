@@ -21,12 +21,12 @@ type Cache struct {
 
 // Options define redis options.
 type Options struct {
-	// Format: redisString = <host>:<port>:<password>:<key>
-	// Example: redisString = localhost:6379::oauth2-client-example
+	// Format: RedisString = <host>:<port>:<password>:<key>
+	// Example: RedisString = localhost:6379::oauth2-client-example
 	// Leave <key> empty for auto generation.
 	RedisString string
-	TokenURL    string // only used if AutoKey is enabled
-	ClientID    string // only used if AutoKey is enabled
+	TokenURL    string // only used if key is empty for auto generation
+	ClientID    string // only used if key is empty for auto generation
 }
 
 // New creates a new cache client.
