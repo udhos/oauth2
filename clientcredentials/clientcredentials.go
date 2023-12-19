@@ -78,6 +78,9 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	}
 
 	resp, errResp := c.send(req, accessToken)
+	if errResp != nil {
+		return resp, errResp
+	}
 
 	if resp.StatusCode == 401 {
 		//

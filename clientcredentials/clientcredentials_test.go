@@ -482,6 +482,40 @@ func TestForcedExpiration(t *testing.T) {
 
 }
 
+func TestServerBrokenURL(t *testing.T) {
+
+	clientID := "clientID"
+	clientSecret := "clientSecret"
+	token := "abc"
+	expireIn := 0
+	softExpire := 0
+	timeSource := (func() time.Time)(nil)
+	disableSingleflight := false
+
+	tokenServerStat := serverStat{}
+	serverStat := serverStat{}
+
+	ts := newTokenServer(&tokenServerStat, clientID, clientSecret, token, expireIn)
+	defer ts.Close()
+
+	client := newClient(t, ts.URL, clientID, clientSecret, softExpire, timeSource, disableSingleflight)
+
+	// send
+
+	{
+		_, errSend := send(client, "broken-url")
+		if errSend == nil {
+			t.Errorf("unexpected success from broken server")
+		}
+		if tokenServerStat.count != 1 {
+			t.Errorf("unexpected token server access count: %d", tokenServerStat.count)
+		}
+		if serverStat.count != 0 {
+			t.Errorf("unexpected server access count: %d", serverStat.count)
+		}
+	}
+}
+
 func TestTokenServerBrokenURL(t *testing.T) {
 
 	clientID := "clientID"
