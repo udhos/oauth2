@@ -3,7 +3,6 @@ package token
 
 import (
 	"encoding/json"
-	"log"
 	"time"
 )
 
@@ -37,10 +36,10 @@ func (t Token) ExportJSON() ([]byte, error) {
 }
 
 // IsValid checks whether token is valid.
-func (t *Token) IsValid(now time.Time, softExpire time.Duration) bool {
+func (t *Token) IsValid(now time.Time, softExpire time.Duration, debugf func(format string, v ...any)) bool {
 	remain := t.Deadline.Sub(now)
 	valid := !t.Expirable || t.Deadline.After(now.Add(softExpire))
-	log.Printf("token softExpire=%v remain=%v expirable=%v valid=%v",
+	debugf("token softExpire=%v remain=%v expirable=%v valid=%v",
 		softExpire, remain, t.Expirable, valid)
 	return valid
 }

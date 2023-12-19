@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -53,7 +52,7 @@ var parseTokenTestTable = []parseTokenTestCase{
 func TestParseToken(t *testing.T) {
 	for _, data := range parseTokenTestTable {
 		buf := []byte(data.token)
-		info, errParse := parseToken(buf)
+		info, errParse := parseToken(buf, t.Logf)
 		success := errParse == nil
 		if success != bool(data.expect) {
 			t.Errorf("%s: expectedSuccess=%t gotSuccess=%t error:%v", data.name, data.expect, success, errParse)
@@ -772,8 +771,7 @@ func newClient(t *testing.T, tokenURL, clientID, clientSecret string, softExpire
 		t.Logf("cache: CACHE=%s", cacheStr)
 		cc, errCache := cache.New(cacheStr)
 		if errCache != nil {
-			t.Errorf("test: newClient: %v", errCache)
-			log.Fatalf("test: newClient: %v", errCache)
+			t.Fatalf("test: newClient: %v", errCache)
 			return nil
 		}
 		c = cc

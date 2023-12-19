@@ -26,7 +26,7 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 - [X] testing-only error cache.
 - [X] redis cache.
 - [X] singleflight.
-- [ ] debug logs.
+- [X] debug logs.
 
 # Usage
 

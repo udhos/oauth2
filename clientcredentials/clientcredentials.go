@@ -41,6 +41,12 @@ type Options struct {
 	TimeSource func() time.Time
 
 	DisableSingleFlight bool
+
+	// Logging function, if undefined defaults to log.Printf
+	Logf func(format string, v ...any)
+
+	// Enable debug logging.
+	Debug bool
 }
 
 // Client is context for invokations with client-credentials flow.
@@ -63,9 +69,22 @@ func New(options Options) *Client {
 	if options.TimeSource == nil {
 		options.TimeSource = time.Now
 	}
+	if options.Logf == nil {
+		options.Logf = log.Printf
+	}
 	options.Cache.Expire()
 	return &Client{
 		options: options,
+	}
+}
+
+func (c *Client) errorf(format string, v ...any) {
+	c.options.Logf("ERROR: "+format, v...)
+}
+
+func (c *Client) debugf(format string, v ...any) {
+	if c.options.Debug {
+		c.options.Logf("DEBUG: "+format, v...)
 	}
 }
 
@@ -88,7 +107,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 		// renew it at the next invokation.
 		//
 		if err := c.options.Cache.Expire(); err != nil {
-			log.Printf("cache expire error: %v", err)
+			c.errorf("cache expire error: %v", err)
 		}
 	}
 
@@ -103,16 +122,16 @@ func (c *Client) send(req *http.Request, accessToken string) (*http.Response, er
 func (c *Client) getToken() (string, error) {
 	t, errCache := c.options.Cache.Get()
 	if errCache != nil {
-		log.Printf("cache get error: %v", errCache)
+		c.errorf("cache get error: %v", errCache)
 		return c.fetchToken()
 	}
 	softExpire := time.Duration(c.options.SoftExpireInSeconds) * time.Second
 	now := c.options.TimeSource()
-	if t.IsValid(now, softExpire) {
-		log.Printf("found valid cached token")
+	if t.IsValid(now, softExpire, c.debugf) {
+		c.debugf("found valid cached token")
 		return t.Value, nil
 	}
-	log.Printf("NO valid cached token")
+	c.debugf("NO valid cached token")
 	return c.fetchToken()
 }
 
@@ -175,13 +194,13 @@ func (c *Client) fetchTokenRaw() (string, error) {
 
 	elap := time.Since(begin)
 
-	log.Printf("fetchToken: elapsed:%v token: %s", elap, string(body))
+	c.debugf("fetchToken: elapsed:%v token: %s", elap, string(body))
 
 	if resp.StatusCode != 200 {
 		return "", fmt.Errorf("status:%d body:%v", resp.StatusCode, string(body))
 	}
 
-	info, errParse := parseToken(body)
+	info, errParse := parseToken(body, c.debugf)
 	if errParse != nil {
 		return "", fmt.Errorf("parse token: %v", errParse)
 	}
@@ -194,9 +213,9 @@ func (c *Client) fetchTokenRaw() (string, error) {
 		newToken.SetExpiration(time.Now().Add(info.expiresIn))
 	}
 
-	log.Printf("saving new token")
+	c.debugf("saving new token")
 	if err := c.options.Cache.Put(newToken); err != nil {
-		log.Printf("cache put error: %v", err)
+		c.errorf("cache put error: %v", err)
 	}
 
 	return newToken.Value, nil
@@ -207,7 +226,7 @@ type tokenInfo struct {
 	expiresIn   time.Duration
 }
 
-func parseToken(buf []byte) (tokenInfo, error) {
+func parseToken(buf []byte, debugf func(format string, v ...any)) (tokenInfo, error) {
 	var info tokenInfo
 
 	var data map[string]interface{}
@@ -237,10 +256,10 @@ func parseToken(buf []byte) (tokenInfo, error) {
 	if foundExpire {
 		switch expireVal := expire.(type) {
 		case float64:
-			log.Printf("found expires_in field with %f seconds", expireVal)
+			debugf("found expires_in field with %f seconds", expireVal)
 			info.expiresIn = time.Second * time.Duration(expireVal)
 		case string:
-			log.Printf("found expires_in field with %s seconds", expireVal)
+			debugf("found expires_in field with %s seconds", expireVal)
 			exp, errConv := strconv.Atoi(expireVal)
 			if errConv != nil {
 				return info, fmt.Errorf("error converting expires_in field from string='%s' to int: %v", expireVal, errConv)

@@ -30,6 +30,7 @@ type application struct {
 	cache               string
 	disableSingleflight bool
 	concurrent          bool
+	debug               bool
 }
 
 func main() {
@@ -49,6 +50,7 @@ func main() {
 	flag.StringVar(&app.cache, "cache", "", "empty means default memory cache\n'file:<path>' means filecache (example: file:/tmp/cache)\n'error' means errorcache\nredis format: 'redis:<host>:<port>:<password>:<key>' (example: redis:localhost:6379::oauth2-client-example)")
 	flag.BoolVar(&app.disableSingleflight, "disableSingleflight", false, "disable singleflight")
 	flag.BoolVar(&app.concurrent, "concurrent", false, "concurrent requests")
+	flag.BoolVar(&app.debug, "debug", false, "enable debug logging")
 
 	flag.Parse()
 
@@ -66,6 +68,7 @@ func main() {
 		SoftExpireInSeconds: app.softExpireSeconds,
 		Cache:               cache,
 		DisableSingleFlight: app.disableSingleflight,
+		Debug:               app.debug,
 	}
 
 	client := clientcredentials.New(options)
