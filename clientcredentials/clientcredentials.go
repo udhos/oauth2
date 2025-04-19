@@ -47,6 +47,18 @@ type Options struct {
 
 	// Enable debug logging.
 	Debug bool
+
+	// IsBadTokenStatus defines custom function to check whether the
+	// server response status is bad token.
+	// If undefined, defaults to DefaulIsBadTokenStatus that just checks
+	// for status 401.
+	IsBadTokenStatus func(status int) bool
+}
+
+// DefaulIsBadTokenStatus is used as default function when option IsBadTokenStatus
+// is left undefined. DefaulIsBadTokenStatus just checks for status 401.
+func DefaulIsBadTokenStatus(status int) bool {
+	return status == 401
 }
 
 // Client is context for invokations with client-credentials flow.
@@ -71,6 +83,9 @@ func New(options Options) *Client {
 	}
 	if options.Logf == nil {
 		options.Logf = log.Printf
+	}
+	if options.IsBadTokenStatus == nil {
+		options.IsBadTokenStatus = DefaulIsBadTokenStatus
 	}
 	options.Cache.Expire()
 	return &Client{
@@ -101,7 +116,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 		return resp, errResp
 	}
 
-	if resp.StatusCode == 401 {
+	if c.options.IsBadTokenStatus(resp.StatusCode) {
 		//
 		// the server refused our token, so we expire it in order to
 		// renew it at the next invokation.
