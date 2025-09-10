@@ -16,71 +16,6 @@ import (
 	"github.com/udhos/oauth2/token"
 )
 
-const (
-	expectSucess  = true
-	expectFailure = false
-)
-
-type expectResult bool
-
-type parseTokenTestCase struct {
-	name             string
-	token            string
-	expect           expectResult
-	expectAcessToken string
-	expectExpire     time.Duration
-}
-
-var parseTokenTestTable = []parseTokenTestCase{
-	{"empty", "", expectFailure, "", 0},
-	{"not-json", "not-json", expectFailure, "", 0},
-	{"no fields", `{}`, expectFailure, "", 0},
-	{"missing access_token", `{"other":"field"}`, expectFailure, "", 0},
-	{"empty access_token", `{"access_token":""}`, expectFailure, "", 0},
-	{"only good access token", `{"access_token":"abc"}`, expectSucess, "abc", 0},
-	{"wrong access token type int", `{"access_token":123}`, expectFailure, "", 0},
-	{"wrong access token type bool", `{"access_token":true}`, expectFailure, "", 0},
-	{"wrong access token type float", `{"access_token":1.1}`, expectFailure, "", 0},
-	{"expire integer", `{"access_token":"abc","expires_in":300}`, expectSucess, "abc", 300 * time.Second},
-	{"expire float", `{"access_token":"abc","expires_in":300.0}`, expectSucess, "abc", 300 * time.Second},
-	{"expire string", `{"access_token":"abc","expires_in":"300"}`, expectSucess, "abc", 300 * time.Second},
-	{"expire broken string", `{"access_token":"abc","expires_in":"TTT"}`, expectFailure, "", 0},
-	{"expire empty string", `{"access_token":"abc","expires_in":""}`, expectFailure, "", 0},
-	{"expire broken bool", `{"access_token":"abc","expires_in":true}`, expectFailure, "", 0},
-}
-
-func TestParseToken(t *testing.T) {
-	for _, data := range parseTokenTestTable {
-		buf := []byte(data.token)
-		info, errParse := parseToken(buf, t.Logf)
-		success := errParse == nil
-		if success != bool(data.expect) {
-			t.Errorf("%s: expectedSuccess=%t gotSuccess=%t error:%v", data.name, data.expect, success, errParse)
-			continue
-		}
-
-		if !success {
-			continue
-		}
-
-		var errored bool
-
-		if info.accessToken != data.expectAcessToken {
-			t.Errorf("%s: expectedAccessToken=%s gotAccessToken=%s", data.name, data.expectAcessToken, info.accessToken)
-			errored = true
-		}
-
-		if info.expiresIn != data.expectExpire {
-			t.Errorf("%s: expectedExpire=%v gotExpire=%v", data.name, data.expectExpire, info.expiresIn)
-			errored = true
-		}
-
-		if !errored {
-			t.Logf("%s: ok", data.name)
-		}
-	}
-}
-
 func TestClientCredentials(t *testing.T) {
 
 	clientID := "clientID"
@@ -757,7 +692,7 @@ func newTokenServer(serverInfo *serverStat, clientID, clientSecret, token string
 }
 
 func newTokenServerBroken(serverInfo *serverStat) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		serverInfo.inc()
 		httpJSON(w, "broken-token", http.StatusOK)
 	}))

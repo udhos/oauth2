@@ -3,19 +3,20 @@ package clientcredentials
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
-	"net/url"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/udhos/oauth2/token"
+	cc "github.com/udhos/oauth2clientcredentials/clientcredentials"
 	"golang.org/x/sync/singleflight"
 )
+
+// HTTPDoer is interface for http client.
+type HTTPDoer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
 
 // Options define client options.
 type Options struct {
@@ -23,7 +24,15 @@ type Options struct {
 	ClientID     string
 	ClientSecret string
 	Scope        string
-	HTTPClient   *http.Client
+
+	// HTTPClient is the HTTP client to use to make requests.
+	// If nil, http.DefaultClient is used.
+	HTTPClient HTTPDoer
+
+	// IsTokenStatusCodeOk defines custom function to check whether the
+	// token server response status is OK.
+	// If undefined, defaults to nil, which means any 2xx status is OK.
+	IsTokenStatusCodeOk func(status int) bool
 
 	// 0 defaults to 10 seconds. Set to -1 to no soft expire.
 	//
@@ -69,6 +78,9 @@ type Client struct {
 
 // New creates a client.
 func New(options Options) *Client {
+	if options.HTTPClient == nil {
+		options.HTTPClient = http.DefaultClient
+	}
 	switch options.SoftExpireInSeconds {
 	case 0:
 		options.SoftExpireInSeconds = 10
@@ -181,51 +193,39 @@ func (c *Client) fetchTokenRaw() (string, error) {
 
 	begin := time.Now()
 
-	form := url.Values{}
-	form.Add("grant_type", "client_credentials")
-	form.Add("client_id", c.options.ClientID)
-	form.Add("client_secret", c.options.ClientSecret)
-	if c.options.Scope != "" {
-		form.Add("scope", c.options.Scope)
+	reqOptions := cc.RequestOptions{
+		TokenURL:       c.options.TokenURL,
+		ClientID:       c.options.ClientID,
+		ClientSecret:   c.options.ClientSecret,
+		Scope:          c.options.Scope,
+		HTTPClient:     c.options.HTTPClient,
+		IsStatusCodeOK: c.options.IsTokenStatusCodeOk,
 	}
 
-	req, errReq := http.NewRequestWithContext(context.TODO(), "POST", c.options.TokenURL, strings.NewReader(form.Encode()))
-	if errReq != nil {
-		return "", errReq
+	if c.options.HTTPClient != nil {
+		// do not assign nil to interface
+		reqOptions.HTTPClient = c.options.HTTPClient
 	}
 
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	resp, errDo := c.options.HTTPClient.Do(req)
-	if errDo != nil {
-		return "", errDo
-	}
-	defer resp.Body.Close()
-
-	body, errBody := io.ReadAll(resp.Body)
-	if errBody != nil {
-		return "", errBody
+	resp, errSend := cc.SendRequest(context.TODO(), reqOptions)
+	if errSend != nil {
+		return "", errSend
 	}
 
 	elap := time.Since(begin)
 
-	c.debugf("fetchToken: elapsed:%v token: %s", elap, string(body))
+	c.debugf("fetchToken: elapsed:%v token:%v", elap, resp)
 
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("status:%d body:%v", resp.StatusCode, string(body))
-	}
-
-	info, errParse := parseToken(body, c.debugf)
-	if errParse != nil {
-		return "", fmt.Errorf("parse token: %v", errParse)
+	if resp.AccessToken == "" {
+		return "", fmt.Errorf("no access token in response")
 	}
 
 	newToken := token.Token{
-		Value: info.accessToken,
+		Value: resp.AccessToken,
 	}
 
-	if info.expiresIn != 0 {
-		newToken.SetExpiration(time.Now().Add(info.expiresIn))
+	if resp.ExpiresIn != 0 {
+		newToken.SetExpiration(time.Now().Add(time.Duration(resp.ExpiresIn) * time.Second))
 	}
 
 	c.debugf("saving new token")
@@ -234,56 +234,4 @@ func (c *Client) fetchTokenRaw() (string, error) {
 	}
 
 	return newToken.Value, nil
-}
-
-type tokenInfo struct {
-	accessToken string
-	expiresIn   time.Duration
-}
-
-func parseToken(buf []byte, debugf func(format string, v ...any)) (tokenInfo, error) {
-	var info tokenInfo
-
-	var data map[string]interface{}
-
-	errJSON := json.Unmarshal(buf, &data)
-	if errJSON != nil {
-		return info, errJSON
-	}
-
-	accessToken, foundToken := data["access_token"]
-	if !foundToken {
-		return info, fmt.Errorf("missing access_token field in token response")
-	}
-
-	tokenStr, isStr := accessToken.(string)
-	if !isStr {
-		return info, fmt.Errorf("non-string value for access_token field in token response")
-	}
-
-	if tokenStr == "" {
-		return info, fmt.Errorf("empty access_token in token response")
-	}
-
-	info.accessToken = tokenStr
-
-	expire, foundExpire := data["expires_in"]
-	if foundExpire {
-		switch expireVal := expire.(type) {
-		case float64:
-			debugf("found expires_in field with %f seconds", expireVal)
-			info.expiresIn = time.Second * time.Duration(expireVal)
-		case string:
-			debugf("found expires_in field with %s seconds", expireVal)
-			exp, errConv := strconv.Atoi(expireVal)
-			if errConv != nil {
-				return info, fmt.Errorf("error converting expires_in field from string='%s' to int: %v", expireVal, errConv)
-			}
-			info.expiresIn = time.Second * time.Duration(exp)
-		default:
-			return info, fmt.Errorf("unexpected type %T for expires_in field in token response", expire)
-		}
-	}
-
-	return info, nil
 }

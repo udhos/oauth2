@@ -37,7 +37,7 @@ func main() {
 
 	app := application{}
 
-	flag.StringVar(&app.tokenURL, "tokenURL", "http://localhost:8080/oauth/token", "token URL")
+	flag.StringVar(&app.tokenURL, "tokenURL", "http://localhost:8080/token", "token URL")
 	flag.StringVar(&app.clientID, "clientID", "admin", "client ID")
 	flag.StringVar(&app.clientSecret, "clientSecret", "admin", "client secret")
 	flag.StringVar(&app.scope, "scope", "", "space-delimited list of scopes")
@@ -60,11 +60,11 @@ func main() {
 	}
 
 	options := clientcredentials.Options{
+		//HTTPClient:          http.DefaultClient,
 		TokenURL:            app.tokenURL,
 		ClientID:            app.clientID,
 		ClientSecret:        app.clientSecret,
 		Scope:               app.scope,
-		HTTPClient:          http.DefaultClient,
 		SoftExpireInSeconds: app.softExpireSeconds,
 		Cache:               cache,
 		DisableSingleFlight: app.disableSingleflight,
@@ -101,7 +101,8 @@ func main() {
 func send(app *application, client *clientcredentials.Client, i int) {
 	label := fmt.Sprintf("request %d/%d", i, app.count)
 
-	req, errReq := http.NewRequestWithContext(context.TODO(), app.targetMethod, app.targetURL, bytes.NewBufferString(app.targetBody))
+	req, errReq := http.NewRequestWithContext(context.TODO(), app.targetMethod,
+		app.targetURL, bytes.NewBufferString(app.targetBody))
 	if errReq != nil {
 		log.Fatalf("%s: request: %v", label, errReq)
 	}
