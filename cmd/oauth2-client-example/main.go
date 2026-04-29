@@ -80,11 +80,9 @@ func main() {
 		var wg sync.WaitGroup
 		for i := 1; i <= app.count; i++ {
 			j := i
-			wg.Add(1)
-			go func() {
+			wg.Go(func() {
 				send(&app, client, j)
-				wg.Done()
-			}()
+			})
 		}
 		wg.Wait()
 		return

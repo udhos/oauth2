@@ -32,7 +32,7 @@ type Options struct {
 	// IsTokenStatusCodeOk defines custom function to check whether the
 	// token server response status is OK.
 	// If undefined, defaults to nil, which means any 2xx status is OK.
-	IsTokenStatusCodeOk func(status int) bool
+	IsTokenStatusCodeOk func(status int) error
 
 	// 0 defaults to 10 seconds. Set to -1 to no soft expire.
 	//
@@ -171,7 +171,7 @@ func (c *Client) fetchToken() (string, error) {
 
 	key := ""
 
-	f := func() (interface{}, error) {
+	f := func() (any, error) {
 		return c.fetchTokenRaw()
 	}
 

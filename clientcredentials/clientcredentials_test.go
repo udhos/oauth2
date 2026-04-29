@@ -93,19 +93,17 @@ func TestConcurrency(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
+	for range 100 {
+		wg.Go(func() {
 
-			for j := 0; j < 100; j++ {
+			for range 100 {
 				_, errSend := send(client, srv.URL)
 				if errSend != nil {
 					t.Errorf("send1: %v", errSend)
 				}
 			}
 
-			wg.Done()
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -151,19 +149,17 @@ func TestSingleFlight(t *testing.T) {
 	total := goroutines * requestsPerGoroutine
 
 	var wg sync.WaitGroup
-	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func() {
+	for range goroutines {
+		wg.Go(func() {
 
-			for j := 0; j < requestsPerGoroutine; j++ {
+			for range requestsPerGoroutine {
 				_, errSend := send(client, srv.URL)
 				if errSend != nil {
 					t.Errorf("send1: %v", errSend)
 				}
 			}
 
-			wg.Done()
-		}()
+		})
 	}
 	wg.Wait()
 
@@ -219,19 +215,17 @@ func TestDisableSingleFlight(t *testing.T) {
 	total := goroutines * requestsPerGoroutine
 
 	var wg sync.WaitGroup
-	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func() {
+	for range goroutines {
+		wg.Go(func() {
 
-			for j := 0; j < requestsPerGoroutine; j++ {
+			for range requestsPerGoroutine {
 				_, errSend := send(client, srv.URL)
 				if errSend != nil {
 					t.Errorf("send1: %v", errSend)
 				}
 			}
 
-			wg.Done()
-		}()
+		})
 	}
 	wg.Wait()
 
